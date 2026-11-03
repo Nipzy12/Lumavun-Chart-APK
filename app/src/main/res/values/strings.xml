@@ -1,0 +1,31 @@
+<resources>
+    <string name="app_name">LUMAVUN Chart</string>
+    <string name="terminal_subtitle">Imagine Beyond the Mist.</string>
+    <string name="status_live">🟢 LIVE</string>
+    <string name="status_reconnecting">🟡 RECONNECTING</string>
+    <string name="status_disconnected">🔴 DISCONNECTED</string>
+    <string name="connection_lost_reconnecting">Connection lost. Reconnecting...</string>
+    <string name="ai_market_analyst">AI INSIGHT</string>
+    <string name="btn_ai_analyze">AI ANALYZE</string>
+    <string name="ai_disclaimer">AI analysis is informational only and is not financial advice.</string>
+    <string name="ai_unavailable">AI analysis temporarily unavailable.</string>
+    <string name="tab_markets">Markets</string>
+    <string name="tab_chart">Chart</string>
+    <string name="tab_ai">AI</string>
+    <string name="tab_settings">Settings</string>
+    <string name="watchlist_title">WATCHLIST</string>
+    <string name="search_pair_hint">Search pair (e.g., BTC, ETH, SOL, XRP)...</string>
+    <string name="support_label">SUPPORT</string>
+    <string name="resistance_label">RESISTANCE</string>
+    <string name="market_structure_label">Market Structure</string>
+    <string name="entry_zone_label">Entry Zone</string>
+    <string name="stop_loss_label">Stop Loss</string>
+    <string name="take_profit_label">Take Profit</string>
+    <string name="risk_reward_label">Risk / Reward</string>
+    <string name="invalidation_label">Invalidation</string>
+    <string name="ai_summary_label">AI Summary</string>
+    <string name="confidence_label">Confidence</string>
+    <string name="trend_label">Trend</string>
+    <string name="momentum_label">Momentum</string>
+    <string name="auto_ai_analysis">AUTO AI ANALYSIS</string>
+</resources>

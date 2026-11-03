@@ -1,0 +1,6 @@
+{
+  "name": "LUMAVUN Chart",
+  "description": "Imagine Beyond the Mist. Professional real-time crypto trading terminal with Binance WebSocket market data, interactive candlestick charts, local technical indicators, SMC/ICT overlays, and LUMAVUN AI Insight.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
