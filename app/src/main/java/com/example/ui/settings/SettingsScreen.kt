@@ -94,6 +94,7 @@ import com.example.ui.settings.AiConfigurationSection
 import com.example.ui.theme.BearishRed
 import com.example.ui.theme.BullishGreen
 import com.example.ui.theme.CyanAccent
+import com.example.ui.components.premiumPanel
 import com.example.ui.theme.NeutralAmber
 import java.util.Locale
 
@@ -1786,9 +1787,7 @@ private fun SettingsSectionCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+            .premiumPanel(12)
             .padding(14.dp)
     ) {
         Text(
