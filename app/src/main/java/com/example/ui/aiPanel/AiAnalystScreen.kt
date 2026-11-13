@@ -78,6 +78,7 @@ import com.example.ui.theme.BearishRedSoft
 import com.example.ui.theme.BullishGreen
 import com.example.ui.theme.BullishGreenSoft
 import com.example.ui.theme.CyanAccent
+import com.example.ui.components.premiumPanel
 import com.example.ui.theme.JetBrainsMonoFontFamily
 import com.example.ui.theme.NeutralAmber
 import com.example.ui.theme.NeutralAmberSoft
@@ -128,9 +129,7 @@ fun CompactAiAnalystCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+            .premiumPanel()
             .padding(horizontal = 10.dp, vertical = 7.dp)
             .testTag("compact_ai_analyst_card"),
         verticalArrangement = Arrangement.spacedBy(5.dp)
@@ -440,6 +439,7 @@ private fun CompactMetricColumn(
  * Compact sections for Multi-Timeframe Analysis (LONG / SHORT / WAIT), Paper Trading & Backtest,
  * Signal Journal, and Performance Dashboard.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FullAiAnalystScreen(
     symbol: String,
@@ -517,23 +517,20 @@ fun FullAiAnalystScreen(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         // 1. Header + Provider Badge ("AI · Primary" / "AI · Backup") + Auto AI Switch
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .premiumPanel()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Column(modifier = Modifier.fillMaxWidth()) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = "LUMAVUN AI INSIGHT V2",
+                        text = "LUMAVUN  /  AI INSIGHT",
                         style = MaterialTheme.typography.labelMedium,
                         color = CyanAccent,
                         fontWeight = FontWeight.Bold,
@@ -598,8 +595,7 @@ fun FullAiAnalystScreen(
                     style = MaterialTheme.typography.labelSmall,
                     color = CyanAccent,
                     fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    softWrap = false,
+                    maxLines = 2,
                     modifier = Modifier.testTag("ai_active_mode_header_badge")
                 )
             }
@@ -674,17 +670,19 @@ fun FullAiAnalystScreen(
         }
 
         // 2. Compact Section Selector: [ Analysis ] | [ Sim & Backtest ] | [ Journal (N) ] | [ Performance ]
-        Row(
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(5.dp)
+            maxItemsInEachRow = 2,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             AiPanelSection.entries.forEach { sec ->
                 val isSelected = activeSection == sec
                 val labelText = when (sec) {
                     AiPanelSection.ANALYSIS -> "Analysis"
-                    AiPanelSection.SIMULATION -> "Bot (Simulasi)"
+                    AiPanelSection.SIMULATION -> "Simulation"
                     AiPanelSection.JOURNAL -> "Journal (${signalJournal.size})"
-                    AiPanelSection.PERFORMANCE -> "Perf"
+                    AiPanelSection.PERFORMANCE -> "Performance"
                 }
                 Surface(
                     color = if (isSelected) CyanAccent.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface,
@@ -709,7 +707,7 @@ fun FullAiAnalystScreen(
                             color = if (isSelected) CyanAccent else MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                             maxLines = 1,
-                            softWrap = false
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -776,9 +774,7 @@ fun FullAiAnalystScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(MaterialTheme.colorScheme.surface)
-                            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                            .premiumPanel()
                             .padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
@@ -1639,9 +1635,7 @@ private fun AiSystemSelectionCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+            .premiumPanel()
             .padding(10.dp)
             .testTag("ai_system_selection_card"),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -2034,9 +2028,7 @@ private fun MarketAssessmentSummaryCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+            .premiumPanel()
             .padding(10.dp)
             .testTag("market_assessment_card"),
         verticalArrangement = Arrangement.spacedBy(6.dp)
