@@ -118,33 +118,35 @@ class ExnessMarketDataProvider(
     }
 
     override suspend fun getSymbols(): MarketApiResult<List<ExchangeSymbolInfo>> = withContext(Dispatchers.IO) {
-        if (!config.isConfigured) {
-            // Provide standard known Exness instruments catalogue
-            return@withContext MarketApiResult.Success(ExnessCatalog.getAllSymbolInfos())
+        if (!config.isConfigured || !config.isEnabled) {
+            return@withContext MarketApiResult.Error(
+                "Exness gateway is not configured/enabled. Cannot verify instrument availability.",
+                isOffline = true
+            )
         }
+        // The gateway API is user-configured, not a universal public Exness endpoint.
         val cleanUrl = config.gatewayUrl.trimEnd('/')
-        val reqBuilder = Request.Builder()
-            .url("$cleanUrl/api/symbols")
-            .get()
+        val reqBuilder = Request.Builder().url("$cleanUrl/api/symbols").get()
         if (config.sessionToken.isNotBlank()) {
             reqBuilder.header("Authorization", "Bearer ${config.sessionToken.trim()}")
         }
         try {
-            val response = httpClient.newCall(reqBuilder.build()).execute()
-            if (!response.isSuccessful) {
-                // Fallback to static catalog if gateway symbols endpoint is unavailable
-                return@withContext MarketApiResult.Success(ExnessCatalog.getAllSymbolInfos())
-            }
-            val body = response.body?.string() ?: ""
-            val parsed = parseSymbolsJson(body)
-            if (parsed.isNotEmpty()) {
-                MarketApiResult.Success(parsed)
-            } else {
-                MarketApiResult.Success(ExnessCatalog.getAllSymbolInfos())
+            httpClient.newCall(reqBuilder.build()).execute().use { response ->
+                if (!response.isSuccessful) {
+                    return@withContext MarketApiResult.Error(
+                        "Exness gateway instruments HTTP ${response.code}"
+                    )
+                }
+                val parsed = parseSymbolsJson(response.body?.string().orEmpty())
+                    .filter { it.status.equals("TRADING", ignoreCase = true) }
+                if (parsed.isEmpty()) {
+                    MarketApiResult.Error("Exness gateway returned no verified tradable instruments")
+                } else {
+                    MarketApiResult.Success(parsed)
+                }
             }
         } catch (e: Exception) {
-            // Graceful fallback to static catalog with error awareness
-            MarketApiResult.Success(ExnessCatalog.getAllSymbolInfos())
+            MarketApiResult.Error("Unable to load Exness instruments: ${e.message}", isOffline = true)
         }
     }
 
@@ -534,14 +536,16 @@ class ExnessMarketDataProvider(
                     val base = obj.optString("baseAsset", "")
                     val quote = obj.optString("quoteAsset", "")
                     val catStr = obj.optString("category", "")
-                    val cat = com.example.market.candle.InstrumentCategory.fromCode(catStr)
+                    val cat = com.example.market.candle.inferInstrumentCategory(
+                        sym, provider = MarketProvider.EXNESS, rawType = catStr
+                    )
                     val name = obj.optString("displayName", sym)
                     list.add(
                         ExchangeSymbolInfo(
                             symbol = sym,
                             baseAsset = base,
                             quoteAsset = quote,
-                            status = "TRADING",
+                            status = obj.optString("status", "UNKNOWN").uppercase(Locale.US),
                             category = cat,
                             provider = MarketProvider.EXNESS,
                             displayName = name
