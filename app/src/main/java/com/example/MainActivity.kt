@@ -424,8 +424,14 @@ fun NexSyncTerminalApp(viewModel: TerminalViewModel) {
                             onMovePairUp = viewModel::moveWatchlistPairUp,
                             onMovePairDown = viewModel::moveWatchlistPairDown,
                             onRefreshCalendar = { viewModel.refreshEconomicCalendar(initialLoad = false) },
+                            onSelectMarketInstrumentForChart = viewModel::openMarketInstrumentOnChart,
+                            onSelectProviderSymbolForChart = viewModel::openProviderSymbolOnChart,
+                            onAddMarketInstrument = viewModel::addMarketInstrumentToWatchlist,
+                            onSelectWatchlistInstrumentForChart = viewModel::openWatchlistInstrumentOnChart,
+                            onRefreshMarketSymbols = viewModel::refreshExchangeSymbols,
                             binanceConnectionStatus = connectionStatus,
-                            biQuoteConnectionStatus = biQuoteConnectionStatus
+                            biQuoteConnectionStatus = biQuoteConnectionStatus,
+                            exnessConnectionStatus = uiState.exnessConnectionStatus
                         )
                     }
 
