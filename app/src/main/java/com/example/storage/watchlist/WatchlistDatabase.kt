@@ -352,8 +352,8 @@ interface TerminalDao {
                 ELSE 2
             END,
             LENGTH(symbol) ASC,
-            symbol ASC 
-        LIMIT 150
+            symbol ASC
+        LIMIT 2500
         """
     )
     fun searchCachedSymbols(
