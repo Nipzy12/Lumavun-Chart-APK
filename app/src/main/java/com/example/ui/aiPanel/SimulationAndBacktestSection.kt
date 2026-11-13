@@ -60,6 +60,7 @@ import com.example.ui.theme.BearishRedSoft
 import com.example.ui.theme.BullishGreen
 import com.example.ui.theme.BullishGreenSoft
 import com.example.ui.theme.CyanAccent
+import com.example.ui.components.premiumPanel
 import com.example.ui.theme.NeutralAmber
 import com.example.ui.theme.NeutralAmberSoft
 import java.text.SimpleDateFormat
@@ -134,9 +135,7 @@ fun SimulationAndBacktestSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                .premiumPanel()
                 .padding(12.dp)
                 .testTag("paper_trading_card"),
             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -319,9 +318,11 @@ fun SimulationAndBacktestSection(
                 fontWeight = FontWeight.Bold
             )
 
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                maxItemsInEachRow = 2,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 SimMetricItem(
                     label = "Balance (Realized)",
@@ -346,9 +347,11 @@ fun SimulationAndBacktestSection(
                 )
             }
 
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                maxItemsInEachRow = 2,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 val rPnl = paperAccountState.totalRealizedPnlUsd
                 val rSign = if (rPnl >= 0) "+" else ""
@@ -373,9 +376,11 @@ fun SimulationAndBacktestSection(
                 )
             }
 
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                maxItemsInEachRow = 2,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 val exp = paperAccountState.expectancyUsd
                 val expSign = if (exp >= 0) "+" else ""
@@ -669,9 +674,7 @@ fun SimulationAndBacktestSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                .premiumPanel()
                 .padding(12.dp)
                 .testTag("event_risk_calendar_card"),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -1008,23 +1011,23 @@ private fun SimMetricItem(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier,
+        modifier = modifier.padding(6.dp),
         horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            softWrap = false
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodySmall,
             color = valueColor,
             fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            softWrap = false
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
