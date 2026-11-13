@@ -3,10 +3,10 @@ package com.example.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // Dark Terminal Palette (Default)
-val TerminalBgDark = Color(0xFF0A0E17)
-val TerminalSurfaceDark = Color(0xFF111827)
-val TerminalSurfaceVariantDark = Color(0xFF1E293B)
-val TerminalBorderDark = Color(0xFF26334D)
+val TerminalBgDark = Color(0xFF090F1D)
+val TerminalSurfaceDark = Color(0xFF131E31)
+val TerminalSurfaceVariantDark = Color(0xFF1B2B42)
+val TerminalBorderDark = Color(0xFF32445E)
 
 // Light Terminal Palette (When Dark Mode = OFF)
 val TerminalBgLight = Color(0xFFF8FAFC)
@@ -23,7 +23,7 @@ val NeutralAmber = Color(0xFFF59E0B)
 val NeutralAmberSoft = Color(0x26F59E0B)
 
 // Accent & Indicator Colors
-val CyanAccent = Color(0xFF06B6D4)
+val CyanAccent = Color(0xFF47D4E7)
 val Ema20Color = Color(0xFF38BDF8)   // Sky Cyan
 val Ema50Color = Color(0xFFF59E0B)   // Amber Gold
 val Ema200Color = Color(0xFFC084FC)  // Violet Purple
