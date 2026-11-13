@@ -475,6 +475,7 @@ class TerminalViewModel(
         TerminalNotificationHelper.ensureChannels(appContext)
         loadCachedSyncedModels()
         initializeTerminal()
+        refreshExnessCatalog()
         observeWebSocketStreams()
         observeClockBoundaryEvents()
         observeWatchlistChanges()
@@ -3124,11 +3125,116 @@ class TerminalViewModel(
     }
 
 
+    /**
+     * Exness inventory is gateway/session dependent; never fallback to sample instruments.
+     * Replaces previous catalog atomically so a disconnected session cannot appear tradable.
+     */
+    fun refreshExnessCatalog() {
+        symbolRepo.replaceExnessCatalog(emptyList())
+        if (!preferences.settings.value.exnessConfig.isEnabled ||
+            !preferences.settings.value.exnessConfig.isConfigured
+        ) return
+        viewModelScope.launch(Dispatchers.IO + safeHandler) {
+            when (val result = exnessProvider.getSymbols()) {
+                is MarketApiResult.Success -> symbolRepo.replaceExnessCatalog(result.data)
+                is MarketApiResult.Error -> symbolRepo.replaceExnessCatalog(emptyList())
+            }
+        }
+    }
+
+    fun openProviderSymbolOnChart(provider: MarketProvider, symbol: String) {
+        preferences.setSelectedMarketProvider(provider)
+        _uiState.update { it.copy(selectedTab = TerminalTab.CHART, activeMarketProvider = provider) }
+        loadMarketPairAndTimeframe(symbol, _uiState.value.activeTimeframe)
+    }
+
+    /** Open persisted watchlist with its stored provider, not symbol-name inference. */
+    fun openWatchlistInstrumentOnChart(saved: com.example.storage.watchlist.WatchlistEntity) {
+        val provider = MarketProvider.fromCode(saved.provider)
+        preferences.setSelectedMarketProvider(provider)
+        _uiState.update { it.copy(selectedTab = TerminalTab.CHART, activeMarketProvider = provider) }
+        loadMarketPairAndTimeframe(saved.symbol, _uiState.value.activeTimeframe)
+    }
+
+    /** Provider-specific selection, so matching symbol codes don't silently switch feeds. */
+    fun openMarketInstrumentOnChart(instrument: ExchangeSymbolInfo) {
+        if (!instrument.status.equals("TRADING", true)) {
+            _uiState.update {
+                it.copy(
+                    watchlistFeedbackMessage = "${instrument.symbol} belum terverifikasi di ${instrument.provider.displayLabel}. Refresh katalog dulu.",
+                    isWatchlistFeedbackError = true
+                )
+            }
+            return
+        }
+        if (instrument.provider == MarketProvider.EXNESS && symbolRepo.verifiedExnessSymbol(instrument.symbol) == null) {
+            _uiState.update {
+                it.copy(watchlistFeedbackMessage = "Exness tidak terhubung atau simbol sudah tidak tersedia.", isWatchlistFeedbackError = true)
+            }
+            return
+        }
+        preferences.setSelectedMarketProvider(instrument.provider)
+        _uiState.update { it.copy(selectedTab = TerminalTab.CHART, activeMarketProvider = instrument.provider) }
+        loadMarketPairAndTimeframe(instrument.symbol, _uiState.value.activeTimeframe)
+    }
+
+    /** Validates the selected provider rather than guessing from symbol naming. */
+    fun addMarketInstrumentToWatchlist(instrument: ExchangeSymbolInfo) {
+        if (watchlist.value.any { it.symbol.equals(instrument.symbol, ignoreCase = true) }) {
+            val existing = watchlist.value.first { it.symbol.equals(instrument.symbol, ignoreCase = true) }
+            _uiState.update {
+                it.copy(
+                    watchlistFeedbackMessage = "${instrument.symbol} sudah tersimpan (${existing.provider}). Simbol yang sama dari dua provider belum dapat disimpan bersamaan.",
+                    isWatchlistFeedbackError = true
+                )
+            }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingWatchlistData = true) }
+            val verified = withContext(Dispatchers.IO) {
+                when (instrument.provider) {
+                    MarketProvider.EXNESS -> symbolRepo.verifiedExnessSymbol(instrument.symbol)?.let { MarketApiResult.Success(it) }
+                        ?: MarketApiResult.Error("Exness symbol not verified by current gateway")
+                    MarketProvider.BINANCE -> restClient.validateUsdtTradingSymbol(instrument.symbol)
+                    MarketProvider.BIQUOTE -> biQuoteClient.validateSymbol(instrument.symbol, instrument.category)
+                }
+            }
+            when (verified) {
+                is MarketApiResult.Success -> {
+                    val authoritative = verified.data
+                    val outcome = withContext(Dispatchers.IO) {
+                        watchlistRepo.addPair(authoritative.symbol, _uiState.value.liveTickers[authoritative.symbol], authoritative)
+                    }
+                    _uiState.update {
+                        it.copy(
+                            isLoadingWatchlistData = false,
+                            watchlistFeedbackMessage = when (outcome) {
+                                is com.example.storage.watchlist.AddPairOutcome.Added -> "${authoritative.symbol} (${authoritative.provider.displayLabel}) ditambahkan."
+                                is com.example.storage.watchlist.AddPairOutcome.Duplicate -> "${authoritative.symbol} sudah ada di Watchlist."
+                                is com.example.storage.watchlist.AddPairOutcome.Invalid -> outcome.message
+                            },
+                            isWatchlistFeedbackError = outcome !is com.example.storage.watchlist.AddPairOutcome.Added
+                        )
+                    }
+                }
+                is MarketApiResult.Error -> _uiState.update {
+                    it.copy(
+                        isLoadingWatchlistData = false,
+                        watchlistFeedbackMessage = "${instrument.provider.displayLabel}: ${verified.message}",
+                        isWatchlistFeedbackError = true
+                    )
+                }
+            }
+        }
+    }
+
     fun refreshExchangeSymbols() {
         viewModelScope.launch(Dispatchers.IO) {
             val count = symbolRepo.ensureSymbolsCached(forceRefresh = true)
             _uiState.update { it.copy(cachedSymbolCount = count) }
         }
+        refreshExnessCatalog()
     }
 
     fun forceReconnectWebSocket() {
@@ -3179,12 +3285,14 @@ class TerminalViewModel(
             MarketProvider.BIQUOTE -> currentSymbol
         }
         _uiState.update { it.copy(activeMarketProvider = provider) }
+        if (provider == MarketProvider.EXNESS) refreshExnessCatalog()
         loadMarketPairAndTimeframe(resolvedSymbol, _uiState.value.activeTimeframe)
     }
 
     fun saveExnessConfig(config: ExnessConfig) {
         preferences.saveExnessConfig(config)
         exnessProvider.updateConfig(config)
+        refreshExnessCatalog()
         if (_uiState.value.activeMarketProvider == MarketProvider.EXNESS) {
             loadMarketPairAndTimeframe(_uiState.value.activeSymbol, _uiState.value.activeTimeframe)
         }
