@@ -18,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,6 +51,7 @@ import com.example.ui.theme.BearishRedSoft
 import com.example.ui.theme.BullishGreen
 import com.example.ui.theme.BullishGreenSoft
 import com.example.ui.theme.CyanAccent
+import com.example.ui.components.premiumPanel
 import com.example.ui.theme.NeutralAmber
 import com.example.ui.theme.NeutralAmberSoft
 import java.text.SimpleDateFormat
@@ -74,9 +76,7 @@ fun SignalJournalListSection(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                .premiumPanel()
                 .padding(10.dp)
         ) {
             Text(
@@ -103,8 +103,15 @@ fun SignalJournalListSection(
                 )
             }
         } else {
-            signals.forEach { sig ->
+            var showAllSignals by remember { mutableStateOf(false) }
+            val visibleSignals = if (showAllSignals) signals else signals.take(15)
+            visibleSignals.forEach { sig ->
                 SignalJournalCard(signal = sig, onSelectForChart = onSelectForChart)
+            }
+            if (signals.size > 15) {
+                OutlinedButton(onClick = { showAllSignals = !showAllSignals }) {
+                    Text(if (showAllSignals) "Show fewer signals" else "Show all ${signals.size} signals")
+                }
             }
         }
     }
@@ -143,9 +150,7 @@ private fun SignalJournalCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+            .premiumPanel()
             .padding(10.dp)
             .testTag("journal_item_${signal.id}"),
         verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -518,6 +523,7 @@ private fun JournalFieldItem(
  * Requirement #15, #16, #19: Lightweight Performance Dashboard with Filters, Profit Factor,
  * Best/Worst Symbol & Timeframe, and Sample Size Classification.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SignalPerformanceDashboardSection(
     metrics: SignalPerformanceMetrics,
@@ -527,6 +533,7 @@ fun SignalPerformanceDashboardSection(
     onUpdateFilter: (JournalFilterState) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showAdvancedFilters by remember { mutableStateOf(false) }
     val filteredClosedBotTrades = remember(paperAccountState.closedPositions, filter) {
         paperAccountState.closedPositions.filter { pos ->
             val symOk = filter.symbolFilter == "ALL" || pos.symbol.equals(filter.symbolFilter, ignoreCase = true)
@@ -564,9 +571,7 @@ fun SignalPerformanceDashboardSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                .premiumPanel()
                 .padding(10.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
@@ -615,6 +620,13 @@ fun SignalPerformanceDashboardSection(
                 }
             }
 
+            OutlinedButton(
+                onClick = { showAdvancedFilters = !showAdvancedFilters },
+                modifier = Modifier.testTag("performance_advanced_filter_toggle")
+            ) {
+                Text(if (showAdvancedFilters) "Hide advanced filters" else "More filters · Source / Status / Scenario")
+            }
+            if (showAdvancedFilters) {
             // Side (ALL / LONG / SHORT) & Date Range (All Time / 7D / 30D)
             Row(
                 modifier = Modifier
@@ -710,6 +722,7 @@ fun SignalPerformanceDashboardSection(
                     )
                 }
             }
+            }
         }
 
         // Tahap 7: AI vs Baseline (EMA 20/50/200) Comparison Summary Card (Net R, Expectancy, Sample Size)
@@ -717,9 +730,7 @@ fun SignalPerformanceDashboardSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                .premiumPanel()
                 .padding(12.dp)
                 .testTag("ai_vs_baseline_comparison_card"),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -804,9 +815,7 @@ fun SignalPerformanceDashboardSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                .premiumPanel()
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
@@ -817,9 +826,11 @@ fun SignalPerformanceDashboardSection(
                 fontWeight = FontWeight.Bold
             )
 
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                maxItemsInEachRow = 2,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 StatCell("Total Signals", "${metrics.totalSignals}", MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
                 StatCell("Wins", "${metrics.wins}", BullishGreen, Modifier.weight(1f))
@@ -845,9 +856,11 @@ fun SignalPerformanceDashboardSection(
                     fontWeight = FontWeight.Bold
                 )
 
-                Row(
+                FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    maxItemsInEachRow = 2,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     StatCell(
                         label = "Win Rate (Wilson 95%)",
@@ -870,9 +883,11 @@ fun SignalPerformanceDashboardSection(
                     )
                 }
 
-                Row(
+                FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    maxItemsInEachRow = 2,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     StatCell(
                         label = "Net Total R",
@@ -895,9 +910,11 @@ fun SignalPerformanceDashboardSection(
                     )
                 }
 
-                Row(
+                FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    maxItemsInEachRow = 2,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     StatCell(
                         label = "Long / Short WR",
@@ -975,9 +992,7 @@ fun SignalPerformanceDashboardSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+                .premiumPanel()
                 .padding(12.dp)
                 .testTag("bot_simulation_performance_card"),
             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -989,9 +1004,11 @@ fun SignalPerformanceDashboardSection(
                 fontWeight = FontWeight.Bold
             )
 
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                maxItemsInEachRow = 2,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 StatCell("Total Trades", "$botTotalTrades (${filteredOpenBotTrades.size} Open)", MaterialTheme.colorScheme.onSurface, Modifier.weight(1f))
                 StatCell("Wins", "$botWins", BullishGreen, Modifier.weight(1f))
@@ -1005,9 +1022,11 @@ fun SignalPerformanceDashboardSection(
                 )
             }
 
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                maxItemsInEachRow = 2,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 val rSign = if (botRealizedPnl >= 0.0) "+" else ""
                 StatCell(
@@ -1079,15 +1098,15 @@ private fun StatCell(
     alignEnd: Boolean = false
 ) {
     Column(
-        modifier = modifier,
+        modifier = modifier.padding(6.dp),
         horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            softWrap = false
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
@@ -1095,8 +1114,8 @@ private fun StatCell(
             style = MaterialTheme.typography.titleSmall,
             color = valueColor,
             fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            softWrap = false
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
