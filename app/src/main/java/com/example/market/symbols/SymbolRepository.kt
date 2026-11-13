@@ -12,6 +12,8 @@ import com.example.market.rest.MarketApiResult
 import com.example.storage.watchlist.CachedSymbolEntity
 import com.example.storage.watchlist.TerminalDao
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import java.util.Locale
 
@@ -123,8 +125,9 @@ class SymbolRepository(
             ExchangeSymbolInfo("JPN225", "JPN225", "PTS", "TRADING", InstrumentCategory.INDICES, MarketProvider.BIQUOTE, "Nikkei 225 Index")
         )
 
-        val ALL_SEED_SYMBOLS: List<ExchangeSymbolInfo> = POPULAR_SEED_SYMBOLS + BIQUOTE_SEED_SYMBOLS +
-            com.example.market.exness.ExnessCatalog.getAllSymbolInfos()
+        // Reference labels are never proof of a tradable instrument.
+        // Exness inventory comes only from a successfully queried configured gateway.
+        val ALL_SEED_SYMBOLS: List<ExchangeSymbolInfo> = POPULAR_SEED_SYMBOLS + BIQUOTE_SEED_SYMBOLS
 
         /**
          * Normalizes a search query string (e.g., " btc/usdt " -> "BTCUSDT", "sol" -> "SOL").
@@ -212,6 +215,21 @@ class SymbolRepository(
         }
     }
 
+    private val liveExnessCatalog = MutableStateFlow<List<ExchangeSymbolInfo>>(emptyList())
+    private val maxCachedVerificationAgeMs = 24L * 60L * 60L * 1000L
+
+    /** Cleared on every gateway/config change; an old session must not leak stale symbols. */
+    fun replaceExnessCatalog(symbols: List<ExchangeSymbolInfo>) {
+        liveExnessCatalog.value = symbols
+            .asSequence()
+            .filter { it.provider == MarketProvider.EXNESS && it.status.equals("TRADING", true) }
+            .distinctBy { it.symbol.uppercase(Locale.US) }
+            .toList()
+    }
+
+    fun verifiedExnessSymbol(symbol: String): ExchangeSymbolInfo? =
+        liveExnessCatalog.value.firstOrNull { it.symbol.equals(symbol, ignoreCase = true) }
+
     fun searchSymbols(
         query: String,
         categoryFilter: InstrumentCategory = InstrumentCategory.ALL,
@@ -219,12 +237,17 @@ class SymbolRepository(
     ): Flow<List<ExchangeSymbolInfo>> {
         val clean = normalizeSearchQuery(query)
         val baseSearch = if (clean.endsWith("USDT") && clean.length > 4) clean.removeSuffix("USDT") else clean
-        return dao.searchCachedSymbols(
-            pattern = "%$baseSearch%",
-            exactQuery = baseSearch,
-            prefixPattern = "$baseSearch%"
-        ).map { entities ->
-            val mappedFromDb = entities.map { e ->
+        return combine(
+            dao.searchCachedSymbols(
+                pattern = "%$baseSearch%",
+                exactQuery = baseSearch,
+                prefixPattern = "$baseSearch%"
+            ),
+            liveExnessCatalog
+        ) { entities, verifiedExness ->
+            val mappedFromDb = entities
+                .filter { it.provider != MarketProvider.EXNESS.code && it.updatedAt > 0L }
+                .map { e ->
                 val cat = InstrumentCategory.fromCode(e.category).let {
                     if (it == InstrumentCategory.ALL) inferInstrumentCategory(e.symbol) else it
                 }
@@ -235,16 +258,18 @@ class SymbolRepository(
                     symbol = e.symbol,
                     baseAsset = e.baseAsset,
                     quoteAsset = e.quoteAsset,
-                    status = "TRADING",
+                    status = if (System.currentTimeMillis() - e.updatedAt <= maxCachedVerificationAgeMs) "TRADING" else "UNVERIFIED",
                     category = cat,
                     provider = prov,
                     displayName = e.displayName
                 )
             }
 
-            // Combine with seed catalog so all categories are immediately searchable even before full sync
-            val combined = (mappedFromDb + ALL_SEED_SYMBOLS)
-                .distinctBy { it.symbol.uppercase(Locale.US) }
+            // Real catalog wins over illustrative seeds; never mix identical codes from two providers.
+            // Seeds remain visibly unverified until the provider confirms the symbol.
+            val seedExamples = ALL_SEED_SYMBOLS.map { it.copy(status = "UNVERIFIED") }
+            val combined = (mappedFromDb + verifiedExness + seedExamples)
+                .distinctBy { "${it.provider.code}:${it.symbol.uppercase(Locale.US)}" }
                 .filter { info ->
                     val matchesCategory = categoryFilter == InstrumentCategory.ALL || info.category == categoryFilter
                     val matchesProvider = providerFilter == null || info.provider == providerFilter
@@ -279,7 +304,9 @@ class SymbolRepository(
 
         // 1. Check local cache first
         val cached = dao.getCachedSymbolByCode(candidate)
-        if (cached != null) {
+        if (cached != null && cached.updatedAt > 0L &&
+            System.currentTimeMillis() - cached.updatedAt <= maxCachedVerificationAgeMs &&
+            cached.provider != MarketProvider.EXNESS.code) {
             val cat = InstrumentCategory.fromCode(cached.category)
             val prov = MarketProvider.fromCode(cached.provider)
             return SymbolValidationOutcome.Valid(
@@ -295,27 +322,9 @@ class SymbolRepository(
             )
         }
 
-        // 2. Check verified seed catalog
-        val seedMatch = ALL_SEED_SYMBOLS.firstOrNull {
-            it.symbol.equals(candidate, ignoreCase = true) ||
-                (preferredCategory != InstrumentCategory.CRYPTO && it.baseAsset.equals(candidate, ignoreCase = true) && it.provider == MarketProvider.BIQUOTE)
-        }
-        if (seedMatch != null) {
-            dao.insertCachedSymbols(
-                listOf(
-                    CachedSymbolEntity(
-                        symbol = seedMatch.symbol,
-                        baseAsset = seedMatch.baseAsset,
-                        quoteAsset = seedMatch.quoteAsset,
-                        updatedAt = System.currentTimeMillis(),
-                        category = seedMatch.category.code,
-                        provider = seedMatch.provider.code,
-                        displayName = seedMatch.displayName
-                    )
-                )
-            )
-            return SymbolValidationOutcome.Valid(seedMatch)
-        }
+        // 2. Exness is accessible only through a live, configured gateway catalog.
+        verifiedExnessSymbol(candidate)?.let { return SymbolValidationOutcome.Valid(it) }
+        // Illustrative seed symbols are never treated as verification.
 
         // 3. If preferred category is non-crypto or symbol looks like non-USDT instrument, validate on BiQuote first
         val shouldTryBiQuoteFirst = preferredCategory in setOf(
@@ -403,7 +412,9 @@ class SymbolRepository(
 
         // 1. Check local cache / verified seed first
         val cached = dao.getCachedSymbolByCode(normalized)
-        if (cached != null && cached.quoteAsset == "USDT") {
+        if (cached != null && cached.quoteAsset == "USDT" &&
+            cached.provider == MarketProvider.BINANCE.code && cached.updatedAt > 0L &&
+            System.currentTimeMillis() - cached.updatedAt <= maxCachedVerificationAgeMs) {
             return SymbolValidationOutcome.Valid(
                 ExchangeSymbolInfo(
                     symbol = cached.symbol,
@@ -417,23 +428,7 @@ class SymbolRepository(
             )
         }
 
-        val seedMatch = POPULAR_SEED_SYMBOLS.firstOrNull { it.symbol.equals(normalized, ignoreCase = true) }
-        if (seedMatch != null) {
-            dao.insertCachedSymbols(
-                listOf(
-                    CachedSymbolEntity(
-                        symbol = seedMatch.symbol,
-                        baseAsset = seedMatch.baseAsset,
-                        quoteAsset = "USDT",
-                        updatedAt = System.currentTimeMillis(),
-                        category = InstrumentCategory.CRYPTO.code,
-                        provider = MarketProvider.BINANCE.code,
-                        displayName = seedMatch.displayName
-                    )
-                )
-            )
-            return SymbolValidationOutcome.Valid(seedMatch)
-        }
+        // Static popular symbols are suggestions, not a substitute for live validation.
 
         // 2. Validate against live Binance /api/v3/exchangeInfo?symbol=...
         return when (val liveCheck = restClient.validateUsdtTradingSymbol(normalized)) {
@@ -489,7 +484,7 @@ class SymbolRepository(
                     provider = MarketProvider.BINANCE.code,
                     displayName = t.displayName
                 )
-            } else {
+            } else if (t.provider == MarketProvider.BIQUOTE) {
                 val (base, quote) = BiQuoteClient.splitBaseQuote(sym, t.category)
                 CachedSymbolEntity(
                     symbol = sym,
@@ -500,7 +495,7 @@ class SymbolRepository(
                     provider = MarketProvider.BIQUOTE.code,
                     displayName = t.displayName
                 )
-            }
+            } else null // Exness catalog is session-scoped, never masquerades as BiQuote.
         }
         if (entities.isNotEmpty()) {
             dao.insertCachedSymbols(entities)
