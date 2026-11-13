@@ -173,19 +173,20 @@ class ExnessMarketDataProviderTest {
     }
 
     @Test
-    fun symbolRepository_seedCatalogIncludesExnessInstruments() {
-        val allSeeds = SymbolRepository.ALL_SEED_SYMBOLS
-        val exnessSeeds = allSeeds.filter { it.provider == MarketProvider.EXNESS }
-        assertTrue("Exness seed catalog should not be empty", exnessSeeds.isNotEmpty())
-        assertTrue("Exness seed catalog should contain EURUSD", exnessSeeds.any { it.symbol == "EURUSD" })
-        assertTrue("Exness seed catalog should contain XAUUSD", exnessSeeds.any { it.symbol == "XAUUSD" })
-        assertTrue("Exness seed catalog should contain BTCUSD", exnessSeeds.any { it.symbol == "BTCUSD" })
-        assertTrue("Exness seed catalog should contain US30", exnessSeeds.any { it.symbol == "US30" })
-
-        // Check category mapping
-        val eurusdInfo = exnessSeeds.first { it.symbol == "EURUSD" }
-        assertEquals(InstrumentCategory.FOREX, eurusdInfo.category)
-        val xauusdInfo = exnessSeeds.first { it.symbol == "XAUUSD" }
-        assertEquals(InstrumentCategory.COMMODITIES, xauusdInfo.category)
+    fun symbolRepository_referenceSeedsDoNotClaimExnessAvailability() {
+        val seeds = SymbolRepository.ALL_SEED_SYMBOLS
+        assertTrue("Reference examples must not advertise Exness availability", seeds.none {
+            it.provider == MarketProvider.EXNESS
+        })
+        assertTrue("Binance examples remain available for discovery", seeds.any { it.provider == MarketProvider.BINANCE })
     }
+
+    @Test
+    fun exnessProvider_withoutGatewayDoesNotClaimLiveSymbols() = kotlinx.coroutines.runBlocking {
+        val provider = ExnessMarketDataProvider(ExnessConfig())
+        val result = provider.getSymbols()
+        assertTrue("Unconfigured Exness must fail closed", result is com.example.market.rest.MarketApiResult.Error)
+        provider.dispose()
+    }
+
 }
