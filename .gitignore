@@ -56,3 +56,15 @@ captures/
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# Keep all private credentials and signing keys out of public GitHub repos.
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+*.p12
+*.pem
+*.key
+local.properties
+.aistudio/
