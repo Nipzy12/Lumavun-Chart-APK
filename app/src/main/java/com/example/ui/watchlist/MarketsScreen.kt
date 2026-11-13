@@ -67,6 +67,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -99,6 +100,7 @@ import com.example.market.candle.formatSymbolPair
 import com.example.market.candle.inferInstrumentCategory
 import com.example.market.candle.inferMarketProvider
 import com.example.market.rest.ExchangeSymbolInfo
+import com.example.market.provider.ProviderConnectionStatus
 import com.example.market.status.MarketStatusEvaluation
 import com.example.market.status.MarketStatusService
 import com.example.market.symbols.SymbolRepository
@@ -112,6 +114,7 @@ import com.example.ui.theme.BearishRedSoft
 import com.example.ui.theme.BullishGreen
 import com.example.ui.theme.BullishGreenSoft
 import com.example.ui.theme.CyanAccent
+import com.example.ui.components.premiumPanel
 import com.example.ui.theme.JetBrainsMonoFontFamily
 import com.example.ui.theme.NeutralAmber
 import com.example.ui.theme.NeutralAmberSoft
@@ -162,12 +165,27 @@ fun MarketsScreen(
     onMovePairDown: (String) -> Unit,
     onToggleFavorite: (String) -> Unit = {},
     onRefreshCalendar: () -> Unit = {},
+    onSelectMarketInstrumentForChart: (ExchangeSymbolInfo) -> Unit = { onSelectSymbolForChart(it.symbol) },
+    onSelectProviderSymbolForChart: (MarketProvider, String) -> Unit = { _, sym -> onSelectSymbolForChart(sym) },
+    onAddMarketInstrument: (ExchangeSymbolInfo) -> Unit = { onAddPair(it.symbol) },
+    onSelectWatchlistInstrumentForChart: (WatchlistEntity) -> Unit = { onSelectSymbolForChart(it.symbol) },
+    onRefreshMarketSymbols: () -> Unit = {},
     binanceConnectionStatus: WsConnectionStatus = WsConnectionStatus.LIVE,
     biQuoteConnectionStatus: WsConnectionStatus = WsConnectionStatus.LIVE,
+    exnessConnectionStatus: ProviderConnectionStatus = ProviderConnectionStatus.Unconfigured("No gateway"),
     hasFeedError: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     var selectedDiscoveryCategory by remember { mutableStateOf(MarketDiscoveryCategory.WATCHLIST) }
+    var selectedSearchProvider by remember { mutableStateOf<MarketProvider?>(null) }
+    val exnessWsStatus = when (exnessConnectionStatus) {
+        is ProviderConnectionStatus.Connected -> WsConnectionStatus.LIVE
+        is ProviderConnectionStatus.Connecting, is ProviderConnectionStatus.Stale -> WsConnectionStatus.RECONNECTING
+        else -> WsConnectionStatus.DISCONNECTED
+    }
+    val providerSearchResults = remember(searchResults, selectedSearchProvider) {
+        searchResults.filter { selectedSearchProvider == null || it.provider == selectedSearchProvider }
+    }
     var recentlyDeletedSymbol by remember { mutableStateOf<String?>(null) }
     var showAddSymbolQuickList by remember { mutableStateOf(false) }
     // Requirement B: Restrict swipe-to-delete to one active row at a time
@@ -476,7 +494,11 @@ fun MarketsScreen(
                 keyboardActions = KeyboardActions(
                     onDone = {
                         if (searchQuery.isNotBlank()) {
-                            onAddPair(searchQuery)
+                            if (selectedSearchProvider == MarketProvider.EXNESS) {
+                                providerSearchResults.firstOrNull {
+                                    it.symbol.equals(searchQuery.trim(), ignoreCase = true) && it.status == "TRADING"
+                                }?.let(onAddMarketInstrument)
+                            } else onAddPair(searchQuery)
                         }
                     }
                 ),
@@ -487,7 +509,7 @@ fun MarketsScreen(
                     .testTag("pair_search_input")
             )
 
-            if (searchQuery.isNotBlank()) {
+            if (searchQuery.isNotBlank() && selectedSearchProvider != MarketProvider.EXNESS) {
                 Surface(
                     color = CyanAccent,
                     shape = RoundedCornerShape(10.dp),
@@ -563,6 +585,54 @@ fun MarketsScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        // Provider filter does not alter the chart data source by itself.
+        // Exness results are populated only by successful gateway instrument sync.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .testTag("market_provider_filter_row"),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            listOf<MarketProvider?>(null, MarketProvider.BINANCE, MarketProvider.BIQUOTE, MarketProvider.EXNESS).forEach { provider ->
+                val selected = selectedSearchProvider == provider
+                Surface(
+                    color = if (selected) CyanAccent.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .border(1.dp, if (selected) CyanAccent else MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+                        .clickable {
+                            selectedSearchProvider = provider
+                            showAddSymbolQuickList = true
+                        }
+                        .testTag("symbol_provider_${provider?.code ?: "ALL"}")
+                ) {
+                    Text(
+                        text = when (provider) {
+                            null -> "All Sources"
+                            MarketProvider.BINANCE -> "Binance USDT"
+                            MarketProvider.BIQUOTE -> "BiQuote"
+                            MarketProvider.EXNESS -> "Exness"
+                        },
+                        color = if (selected) CyanAccent else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp)
+                    )
+                }
+            }
+        }
+        if (selectedSearchProvider == MarketProvider.EXNESS) {
+            Text(
+                text = "Exness: only instruments confirmed by the configured gateway are shown. Refresh after connecting your account.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 5.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+
         if (searchQuery.isNotBlank() || showAddSymbolQuickList) {
             // Search Results from Multi-Market Catalog (Binance USDT + BiQuote Forex/Metals/Stocks/Indices)
             Row(
@@ -571,9 +641,9 @@ fun MarketsScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val headerLabel = if (selectedCategory == InstrumentCategory.ALL) {
-                    "MULTI-MARKET INSTRUMENTS (${searchResults.size})"
+                    "MULTI-MARKET INSTRUMENTS (${providerSearchResults.size})"
                 } else {
-                    "${selectedCategory.label.uppercase(Locale.US)} INSTRUMENTS (${searchResults.size})"
+                    "${selectedCategory.label.uppercase(Locale.US)} INSTRUMENTS (${providerSearchResults.size})"
                 }
                 Text(
                     text = headerLabel,
@@ -594,7 +664,7 @@ fun MarketsScreen(
             }
             Spacer(modifier = Modifier.height(6.dp))
 
-            if (searchResults.isEmpty() && searchQuery.isNotBlank()) {
+            if (providerSearchResults.isEmpty() && (searchQuery.isNotBlank() || selectedSearchProvider == MarketProvider.EXNESS)) {
                 val normalizedCandidate = SymbolRepository.normalizeMultiMarketSymbolInput(searchQuery, selectedCategory)
                 Box(
                     modifier = Modifier
@@ -610,7 +680,20 @@ fun MarketsScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        if (normalizedCandidate.isNotEmpty()) {
+                        if (selectedSearchProvider == MarketProvider.EXNESS) {
+                            Text(
+                                text = "No verified Exness instruments available",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Configure and enable the Exness gateway in Settings, then refresh instruments. Sample symbols are not live availability.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                            OutlinedButton(onClick = onRefreshMarketSymbols) { Text("Refresh Instruments") }
+                        } else if (normalizedCandidate.isNotEmpty()) {
                             Text(
                                 text = "${formatSymbolPair(normalizedCandidate)} belum ada di cache lokal",
                                 style = MaterialTheme.typography.titleSmall,
@@ -657,14 +740,14 @@ fun MarketsScreen(
                         .fillMaxSize()
                         .testTag("pair_search_results_list")
                 ) {
-                    items(searchResults, key = { it.symbol }) { item ->
+                    items(providerSearchResults, key = { "${it.provider.code}:${it.symbol}" }) { item ->
                         val inWatchlist = watchlistSymbolsSet.contains(item.symbol.uppercase(Locale.US))
                         val isFav = favoriteSymbols.contains(item.symbol.uppercase(Locale.US))
                         val liveTicker = liveTickers[item.symbol]
-                        val connStatus = if (item.provider == MarketProvider.BIQUOTE) {
-                            biQuoteConnectionStatus
-                        } else {
-                            binanceConnectionStatus
+                        val connStatus = when (item.provider) {
+                            MarketProvider.BIQUOTE -> biQuoteConnectionStatus
+                            MarketProvider.EXNESS -> exnessWsStatus
+                            MarketProvider.BINANCE -> binanceConnectionStatus
                         }
                         val itemMarketStatus = MarketStatusService.evaluate(
                             symbol = item.symbol,
@@ -681,18 +764,20 @@ fun MarketsScreen(
                             liveTicker = liveTicker,
                             marketStatus = itemMarketStatus,
                             onSelectPair = {
-                                if (!inWatchlist) {
-                                    onAddPair(item.symbol)
+                                if (item.status.equals("TRADING", ignoreCase = true)) {
+                                    if (!inWatchlist) onAddMarketInstrument(item)
+                                    showAddSymbolQuickList = false
+                                    onSelectMarketInstrumentForChart(item)
+                                } else {
+                                    onAddMarketInstrument(item) // Validate candidate against provider first
                                 }
-                                showAddSymbolQuickList = false
-                                onSelectSymbolForChart(item.symbol)
                             },
                             onToggleFavorite = { onToggleFavorite(item.symbol) },
                             onToggleWatchlist = {
                                 if (inWatchlist) {
                                     handleDeleteWithUndo(item.symbol)
                                 } else {
-                                    onAddPair(item.symbol)
+                                    onAddMarketInstrument(item)
                                 }
                             }
                         )
@@ -825,10 +910,10 @@ fun MarketsScreen(
                                 inferMarketProvider(item.symbol, itemCategory)
                             }
                             val itemDisplayName = live?.displayName?.ifBlank { item.displayName } ?: item.displayName
-                            val itemConnStatus = if (itemProvider == MarketProvider.BIQUOTE) {
-                                biQuoteConnectionStatus
-                            } else {
-                                binanceConnectionStatus
+                            val itemConnStatus = when (itemProvider) {
+                                MarketProvider.BIQUOTE -> biQuoteConnectionStatus
+                                MarketProvider.EXNESS -> exnessWsStatus
+                                MarketProvider.BINANCE -> binanceConnectionStatus
                             }
                             val fallbackQuoteTs = if (price > 0.0 && item.updatedAt > 0L) item.updatedAt else null
                             val rowMarketStatus = MarketStatusService.evaluate(
@@ -869,7 +954,7 @@ fun MarketsScreen(
                                 },
                                 onSelect = {
                                     activeSwipedSymbol = null
-                                    onSelectSymbolForChart(item.symbol)
+                                    onSelectWatchlistInstrumentForChart(item)
                                 },
                                 onToggleFavorite = { onToggleFavorite(item.symbol) },
                                 onMoveUp = {
@@ -935,10 +1020,10 @@ fun MarketsScreen(
                         val isFav = favoriteSymbols.contains(ticker.symbol.uppercase(Locale.US))
                         val isSelected = ticker.symbol.equals(activeSymbol, ignoreCase = true)
                         val isRowSwipedOpen = activeSwipedSymbol.equals(ticker.symbol, ignoreCase = true)
-                        val itemConnStatus = if (ticker.provider == MarketProvider.BIQUOTE) {
-                            biQuoteConnectionStatus
-                        } else {
-                            binanceConnectionStatus
+                        val itemConnStatus = when (ticker.provider) {
+                            MarketProvider.BIQUOTE -> biQuoteConnectionStatus
+                            MarketProvider.EXNESS -> exnessWsStatus
+                            MarketProvider.BINANCE -> binanceConnectionStatus
                         }
                         val tickerMarketStatus = MarketStatusService.evaluate(
                             symbol = ticker.symbol,
@@ -979,7 +1064,7 @@ fun MarketsScreen(
                             onSelect = {
                                 activeSwipedSymbol = null
                                 if (!inWatchlist) onAddPair(ticker.symbol)
-                                onSelectSymbolForChart(ticker.symbol)
+                                onSelectProviderSymbolForChart(ticker.provider, ticker.symbol)
                             },
                             onToggleFavorite = { onToggleFavorite(ticker.symbol) },
                             onAdd = { onAddPair(ticker.symbol) },
@@ -1010,6 +1095,7 @@ private fun SearchSymbolResultRow(
     onToggleFavorite: () -> Unit,
     onToggleWatchlist: () -> Unit
 ) {
+    val compactLayout = LocalConfiguration.current.screenWidthDp < 390
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1087,6 +1173,7 @@ private fun SearchSymbolResultRow(
                 }
             }
             val subText = when {
+                !item.status.equals("TRADING", true) -> "Reference only · Tap Add to verify · ${item.provider.displayLabel}"
                 liveTicker != null && liveTicker.quoteVolume > 0.0 ->
                     "Vol $${formatCompactVolume(liveTicker.quoteVolume)} · ${item.provider.displayLabel}"
                 item.displayName.isNotBlank() ->
@@ -1109,7 +1196,7 @@ private fun SearchSymbolResultRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (liveTicker != null && liveTicker.lastPrice > 0.0) {
+            if (!compactLayout && liveTicker != null && liveTicker.lastPrice > 0.0) {
                 val isUp = liveTicker.priceChangePercent >= 0.0
                 val changeCol = if (isUp) BullishGreen else BearishRed
                 val changeBg = if (isUp) BullishGreenSoft else BearishRedSoft
