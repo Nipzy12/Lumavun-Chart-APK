@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>LUMAVUN Chart</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand"><span class="moon"></span><div><strong>LUMAVUN</strong><small>CHART DESKTOP · PREVIEW 0.1</small></div></div>
+      <div class="topright"><span class="eyebrow">SOURCE</span><span class="provider">BINANCE SPOT</span><span id="status" class="status">READY</span></div>
+    </header>
+    <div class="workspace">
+      <aside class="sidebar">
+        <div class="section-heading"><span>WATCHLIST</span><span id="watchCount">0 PAIRS</span></div>
+        <form id="searchForm" class="searchForm">
+          <input id="symbolInput" aria-label="Cari pasangan Binance USDT" autocomplete="off" spellcheck="false" placeholder="BTCUSDT / ETHUSDT" maxlength="20">
+          <button title="Tambahkan pair" type="submit">+</button>
+        </form>
+        <div id="watchlist" class="watchlist"></div>
+        <div class="asidefoot"><span class="tiny-dot"></span> Harga asli dari Binance Spot. Tidak ada harga simulasi atau trading live.</div>
+      </aside>
+      <main class="main">
+        <div class="symbolbar">
+          <div><span class="label">MARKET OVERVIEW</span><h1 id="pairTitle">BTC / USDT</h1><div id="lastUpdate" class="muted">Belum memuat data</div></div>
+          <div class="pricearea"><div id="lastPrice" class="price">—</div><span id="priceChange" class="change">—</span></div>
+        </div>
+        <div class="toolbar">
+          <div id="timeframes" class="timeframes" role="group" aria-label="Timeframe"><button data-interval="1m">1m</button><button data-interval="5m">5m</button><button data-interval="15m" class="active">15m</button><button data-interval="30m">30m</button><button data-interval="1h">1H</button><button data-interval="4h">4H</button><button data-interval="1d">1D</button></div>
+          <div class="tools"><label><input id="toggleEma20" type="checkbox" checked>EMA 20</label><label><input id="toggleEma50" type="checkbox" checked>EMA 50</label><button id="refresh" class="refresh" type="button">↻ Refresh</button></div>
+        </div>
+        <section class="chartcard">
+          <div class="chartheading"><span id="chartLabel">BTCUSDT · 15m</span><span id="chartState" class="muted">Memuat grafik…</span></div>
+          <div id="chart" class="chart" role="img" aria-label="Grafik candlestick dari data OHLC Binance"></div>
+          <div id="error" class="error" role="alert" hidden></div>
+        </section>
+        <section class="stats">
+          <article class="stat"><span>RSI 14</span><strong id="rsiValue">—</strong><small>Wilder</small></article>
+          <article class="stat"><span>EMA 20</span><strong id="ema20Value">—</strong><small>Trend cepat</small></article>
+          <article class="stat"><span>EMA 50</span><strong id="ema50Value">—</strong><small>Trend menengah</small></article>
+          <article class="stat"><span>SUPPORT</span><strong id="supportValue">—</strong><small>Fractal pivot</small></article>
+          <article class="stat"><span>RESISTANCE</span><strong id="resistanceValue">—</strong><small>Fractal pivot</small></article>
+        </section>
+        <footer>DESKTOP PREVIEW · READ-ONLY MARKET DATA · Fitur AI, Exness gateway, paper trading, dan akun Android belum dipindahkan.</footer>
+      </main>
+    </div>
+  </div>
+  <script src="./vendor/lightweight-charts.js"></script>
+  <script src="../core/indicators.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+{
+  "name": "lumavun-chart-desktop",
+  "productName": "LUMAVUN Chart",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LUMAVUN Chart Windows desktop preview, ported from Lumavun-Chart-APK",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "npm run prepare:assets && electron .",
+    "test": "node --test core/*.test.cjs",
+    "prepare:assets": "node scripts/copy-chart.cjs",
+    "dist:win": "npm run prepare:assets && electron-builder --win nsis portable --x64"
+  },
+  "dependencies": {
+    "lightweight-charts": "^5.0.0"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "com.lumavun.chart.desktop",
+    "productName": "LUMAVUN Chart",
+    "asar": true,
+    "directories": {"output": "dist"},
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "core/indicators.js",
+      "renderer/**/*",
+      "package.json"
+    ],
+    "win": {"target": ["nsis", "portable"], "signAndEditExecutable": false},
+    "nsis": {"oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true}
+  }
+}
