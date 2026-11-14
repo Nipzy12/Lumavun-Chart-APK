@@ -1,4 +1,5 @@
 'use strict';
+const vision=require('./vision.cjs');
 const LOOP='http://127.0.0.1:11434',NAME=/^[A-Za-z0-9][A-Za-z0-9._:/+-]{0,100}$/;
 function validateConfig(raw){
  const provider=String(raw?.provider||'').toUpperCase(),model=String(raw?.model||'').trim();
@@ -89,10 +90,10 @@ async function listOllamaModels(fetcher=globalThis.fetch){
  if(!Array.isArray(body.models))throw Error('Ollama belum mengembalikan daftar model.');
  return [...new Set(body.models.map(m=>String(m.name||m.model||'')).filter(m=>NAME.test(m)))].slice(0,100);
 }
-async function analyze(config,snapshot,fetcher=globalThis.fetch){
+async function analyze(config,snapshot,fetcher=globalThis.fetch,imageDataUrl=null){
  const safe=validateConfig(config);
  if(!snapshot||!Array.isArray(snapshot.candles)||!Number.isFinite(snapshot.lastPrice)||snapshot.lastPrice<=0)throw Error('Snapshot belum siap.');
- const messages=buildMessages(snapshot);
+ const messages=imageDataUrl===null?buildMessages(snapshot):vision.buildVisionMessages(buildMessages(snapshot),safe.provider,imageDataUrl);
  let body;
  if(safe.provider==='OLLAMA')body=await getJson(LOOP+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
   body:JSON.stringify({model:safe.model,messages,format:'json',stream:false,options:{temperature:0.2,num_predict:800}})},fetcher);
@@ -102,6 +103,6 @@ async function analyze(config,snapshot,fetcher=globalThis.fetch){
  }
  let answer=safe.provider==='OLLAMA'?body?.message?.content:body?.choices?.[0]?.message?.content;
  if(Array.isArray(answer))answer=answer.filter(v=>typeof v?.text==='string').map(v=>v.text).join('\n');
- return parseReply(answer,safe,snapshot.lastPrice);
+ return {...parseReply(answer,safe,snapshot.lastPrice),visionAssisted:imageDataUrl!==null};
 }
 module.exports={OLLAMA_URL:LOOP,validateConfig,createSnapshot,buildMessages,parseReply,listOllamaModels,analyze};

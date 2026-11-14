@@ -34,6 +34,16 @@ jobs:
         run: npm run check:syntax
       - name: Test market, trading and AI utilities
         run: npm test
+      - name: Electron window smoke test
+        run: npm run test:ui
+      - name: Upload UI smoke screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: LUMAVUN-Windows-UI-Smoke
+          path: desktop/artifacts/desktop-ui-smoke.png
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Build installer and portable EXE
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'

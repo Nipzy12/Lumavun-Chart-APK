@@ -1,4 +1,4 @@
-# LUMAVUN Chart Desktop: Windows Preview v0.3
+# LUMAVUN Chart Desktop: Windows Preview v0.4
 
 This is a standalone Electron app **ported from the LUMAVUN Chart Android codebase** (Kotlin + Jetpack Compose). It is not a binary APK-to-EXE converter, and **not yet at feature parity** with Android.
 
@@ -55,3 +55,19 @@ Click **Analisis chart saat ini** when the provider has loaded at least 60 verif
 The model must reply with JSON. Responses are treated as untrusted text. Incoherent entry, stop-loss and take-profit values are downgraded to WAIT and are never sent to real or virtual execution. There is no win-rate guarantee. Ollama inference itself can run offline after the model has been downloaded, but fresh market OHLC still requires the associated provider's connectivity.
 
 Known gaps: LLM vision/screenshot analysis, AI auto-bot, fully offline historical OHLC, replay data, and full Android AI feature parity. Live Ollama and third-party API compatibility must be tested on a Windows machine after packaging. Unit tests and packaging checks cannot prove functional interactive integration.
+
+
+## v0.4 Vision: screenshot-assisted on-demand AI
+
+- Configure Ollama with a vision-capable model such as qwen2.5vl:3b (download separately using PowerShell: ollama pull qwen2.5vl:3b), or a custom HTTPS OpenAI-compatible API supporting image input.
+- After verified OHLC history loads, connect the model and click Pratinjau gambar chart. The preview comes from Lightweight Charts canvas, not the whole desktop or an Electron window, and has NOT been sent yet.
+- After reviewing the image, click Analisis dengan Vision. The model receives the PNG and bounded market snapshot. This is the only action that sends the image to local Ollama or remote API.
+- PNG stays in memory only. The Electron main process checks fresh cache, PNG header, dimensions and a strict 4 MB binary limit.
+- Ollama receives image via messages user images[] base64 field. Custom OpenAI-compatible endpoint receives user content[] with image_url PNG data URI.
+- Invalid trade levels produce WAIT. No live broker order, AI auto-execution, or automatic paper trading.
+- Cloud Vision transmits the screenshot and OHLC to the configured provider. Do not use it if that provider should not see your chart.
+- Model capabilities vary; a text-only model may fail. Ollama model listing alone does not prove Vision support.
+
+### Windows UI smoke test
+
+GitHub Actions runs a Playwright Electron window test before packaging. It checks app startup, chart canvas rendering, local watchlist, AI Vision controls, and provider/model switches. It uploads a screenshot as artifact LUMAVUN-Windows-UI-Smoke. This does not validate external market data feeds or live Ollama inference. Windows EXE is unsigned.
