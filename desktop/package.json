@@ -11,7 +11,7 @@
     "prepare:assets": "node scripts/copy-chart.cjs",
     "dist:win": "npm run prepare:assets && electron-builder --win nsis portable --x64",
     "check:syntax": "node --check main.cjs && node --check preload.cjs && node --check renderer/app.js && node --check core/market.cjs && node --check core/paper.js && node --check core/insight.js && node --check core/ai-analyst.cjs && node --check core/vision.cjs && node --check tests/ui-smoke.cjs",
-    "test:ui": "node tests/ui-smoke.cjs"
+    "test:ui": "npm run prepare:assets && node tests/ui-smoke.cjs"
   },
   "dependencies": {
     "lightweight-charts": "^5.0.0"
