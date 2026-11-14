@@ -9,7 +9,8 @@
     "start": "npm run prepare:assets && electron .",
     "test": "node --test core/*.test.cjs",
     "prepare:assets": "node scripts/copy-chart.cjs",
-    "dist:win": "npm run prepare:assets && electron-builder --win nsis portable --x64"
+    "dist:win": "npm run prepare:assets && electron-builder --win nsis portable --x64",
+    "check:syntax": "node --check main.cjs && node --check preload.cjs && node --check renderer/app.js && node --check core/market.cjs && node --check core/paper.js && node --check core/insight.js"
   },
   "dependencies": {
     "lightweight-charts": "^5.0.0"

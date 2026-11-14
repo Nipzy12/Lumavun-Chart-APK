@@ -1,4 +1,4 @@
-const {test}=require('node:test');const assert=require('node:assert/strict');const paper=require('./paper.cjs');
+const {test}=require('node:test');const assert=require('node:assert/strict');const paper=require('./paper.js');
 test('paper trading opens a risk-sized virtual position and closes at target',()=>{
  const a=paper.createAccount(1000);
  const p=paper.open(a,{provider:'BINANCE',symbol:'BTCUSDT',side:'LONG',price:100,stopPct:1,tpPct:2,riskPct:1});
