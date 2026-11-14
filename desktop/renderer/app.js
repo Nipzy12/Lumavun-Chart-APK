@@ -298,7 +298,7 @@ byId('aiCapture').addEventListener('click',()=>{
  if(!aiUi.configured||!aiUi.ready||aiUi.loadedKey!==marketAiKey())
   return setAiStatus('Hubungkan model dan tunggu data OHLC terbaru terlebih dahulu.');
  try{
-  const canvas=chart.takeScreenshot(true,false);
+  const canvas=captureChartCanvas();
   if(!canvas||canvas.width<200||canvas.height<180)throw Error('Ukuran chart terlalu kecil.');
   const dataUrl=canvas.toDataURL('image/png');
   if(!dataUrl.startsWith('data:image/png;base64,')||dataUrl.length>5_600_000)
@@ -336,3 +336,161 @@ byId('aiVision').addEventListener('click',async()=>{
 
 renderWatchlist();renderTimeframes();renderPaper();refresh(true);
 setInterval(()=>{if(!busy&&!document.hidden)refresh(false);},45000);
+
+
+/* v0.5 navigable pages and in-app local model installer */
+const ROUTES=new Set(['chart','ai','models','paper','settings']);
+let currentPage='chart';
+function showPage(page) {
+ if(!ROUTES.has(page))return;
+ currentPage=page;
+ for(const route of ROUTES) {
+  const node=byId('page-'+route);
+  node.hidden=route!==page;
+ }
+ document.querySelectorAll('#pageNav .navTab').forEach(button=>{
+  const selected=button.dataset.route===page;
+  button.classList.toggle('active',selected);
+  if(selected)button.setAttribute('aria-current','page');
+  else button.removeAttribute('aria-current');
+ });
+ if(page==='chart')requestAnimationFrame(()=>{
+  const rect=byId('chart').getBoundingClientRect();
+  if(rect.width>=200&&rect.height>=180)chart.resize(Math.round(rect.width),Math.round(rect.height));
+ });
+ if(page==='models')refreshLocalAiStatus();
+}
+document.querySelectorAll('#pageNav .navTab').forEach(button=>{
+ button.addEventListener('click',()=>showPage(button.dataset.route));
+});
+function captureChartCanvas() {
+ const chartRoute=byId('page-chart');
+ const wasHidden=chartRoute.hidden;
+ try {
+  if(wasHidden)chartRoute.hidden=false;
+  const rect=byId('chart').getBoundingClientRect();
+  if(rect.width<200||rect.height<180)throw Error('Grafik terlalu kecil. Buka halaman Chart dahulu.');
+  chart.resize(Math.round(rect.width),Math.round(rect.height));
+  return chart.takeScreenshot(true,false);
+ }finally{
+  if(wasHidden)chartRoute.hidden=true;
+ }
+}
+const localUi={busy:false,online:false,installed:false,models:[],catalog:[],downloading:null};
+function setLocalStatus(message,percent=null) {
+ byId('localModelStatus').textContent=String(message).slice(0,400);
+ const bar=byId('localModelProgress');
+ if(percent===null||percent===undefined){bar.hidden=true;bar.value=0;}
+ else{bar.hidden=false;bar.value=Math.max(0,Math.min(100,Number(percent)||0));}
+}
+function renderLocalModels(){
+ const root=byId('localModelCatalog');root.replaceChildren();
+ byId('modelInstalledCount').textContent=localUi.models.length+' installed';
+ for(const item of localUi.catalog) {
+  const card=document.createElement('article');card.className='modelCard';
+  const head=document.createElement('div');head.className='modelCardHeader';
+  const chip=document.createElement('span');chip.className='modelChip'+(item.type==='vision'?' vision':'');
+  chip.textContent=item.type==='vision'?'VISION':'TEXT';
+  const installed=localUi.models.includes(item.model)||localUi.models.includes(item.model+':latest');
+  const status=document.createElement('small');status.textContent=installed?'INSTALLED':'NOT INSTALLED';
+  head.append(chip,status);
+  const title=document.createElement('h3');title.textContent=item.name;
+  const id=document.createElement('small');id.textContent=item.model;
+  const note=document.createElement('p');note.textContent=item.note;
+  const controls=document.createElement('div');controls.className='modelCardActions';
+  const install=document.createElement('button');install.type='button';install.className='installModel';
+  install.textContent=installed?'Installed':'Install Model';
+  install.disabled=installed||!localUi.online||localUi.busy;
+  install.addEventListener('click',()=>installLocalModel(item.model));
+  const use=document.createElement('button');use.type='button';use.className='chooseModel';
+  use.textContent='Use in Analyst';use.disabled=!installed;
+  use.addEventListener('click',()=>{
+   byId('aiMode').value='OLLAMA';
+   byId('aiMode').dispatchEvent(new Event('change'));
+   byId('aiModel').value=item.model;
+   byId('aiModel').dispatchEvent(new Event('input'));
+   showPage('ai');
+   setAiStatus('Model '+item.model+' dipilih. Klik Hubungkan model untuk memulai analisis.');
+  });
+  controls.append(install,use);card.append(head,title,id,note,controls);root.append(card);
+ }
+}
+function renderLocalStatus() {
+ byId('localRuntimeTitle').textContent=localUi.online?'Ollama Online':
+  localUi.installed?'Ollama Installed · Offline':'Ollama Not Installed';
+ byId('localRuntimeDetail').textContent=localUi.online?
+  'Server lokal aktif di 127.0.0.1:11434. Model bisa diunduh dan dipakai dari aplikasi.':
+  localUi.installed?'Runtime ditemukan. Jalankan server Ollama untuk mulai mengunduh model.':
+   'Belum menemukan runtime Ollama pada Windows ini. Instal melalui tombol di sebelah kanan.';
+ byId('localRuntimeInstall').disabled=localUi.installed||localUi.busy;
+ byId('localRuntimeStart').disabled=!localUi.installed||localUi.online||localUi.busy;
+ byId('localRuntimeRefresh').disabled=localUi.busy;
+ byId('localModelCancel').disabled=!localUi.downloading;
+ renderLocalModels();
+}
+async function refreshLocalAiStatus(){
+ if(!window.lumavun||!window.lumavun.localAiStatus)return;
+ try{
+  const result=await window.lumavun.localAiStatus();
+  localUi.online=Boolean(result.online);
+  localUi.installed=Boolean(result.installed);
+  localUi.models=Array.isArray(result.models)?result.models:[];
+  localUi.catalog=Array.isArray(result.catalog)?result.catalog:[];
+  localUi.downloading=result.downloading||null;
+  renderLocalStatus();
+ }catch(error){setLocalStatus('Gagal memeriksa Ollama: '+String(error.message||error));}
+}
+byId('localRuntimeRefresh').addEventListener('click',()=>refreshLocalAiStatus());
+byId('localRuntimeInstall').addEventListener('click',async()=>{
+ if(localUi.busy)return;
+ if(!window.confirm('Pasang runtime Ollama untuk Windows melalui WinGet? Installer dan model memerlukan ruang disk serta koneksi internet.'))return;
+ localUi.busy=true;renderLocalStatus();setLocalStatus('WinGet sedang memasang paket Ollama.Ollama. Jangan tutup aplikasi.');
+ try{
+  await window.lumavun.installLocalRuntime();
+  setLocalStatus('Instalasi runtime selesai. Jika server belum aktif, klik Jalankan Server.');
+ }catch(error){setLocalStatus('Instalasi gagal: '+String(error.message||error));}
+ finally{localUi.busy=false;await refreshLocalAiStatus();}
+});
+byId('localRuntimeStart').addEventListener('click',async()=>{
+ if(localUi.busy)return;
+ localUi.busy=true;renderLocalStatus();setLocalStatus('Mencoba memulai layanan Ollama...');
+ try{
+  await window.lumavun.startLocalRuntime();
+  setLocalStatus('Server Ollama mulai dijalankan. Tekan Refresh Status setelah proses siap.');
+ }catch(error){setLocalStatus('Gagal memulai Ollama: '+String(error.message||error));}
+ finally{localUi.busy=false;await refreshLocalAiStatus();}
+});
+async function installLocalModel(model){
+ if(localUi.busy||!localUi.online)return;
+ if(!window.confirm('Unduh model lokal '+model+' dari library Ollama? File dapat berukuran beberapa GB dan memerlukan internet.'))return;
+ localUi.busy=true;localUi.downloading=model;
+ renderLocalStatus();setLocalStatus('Memulai unduhan '+model+'...',0);
+ try{
+  const result=await window.lumavun.pullLocalModel(model);
+  setLocalStatus(result.alreadyInstalled?'Model '+model+' telah terpasang.':'Model '+model+' telah berhasil diunduh.',100);
+ }catch(error){setLocalStatus('Unduhan tidak berhasil: '+String(error.message||error));}
+ finally{localUi.busy=false;localUi.downloading=null;await refreshLocalAiStatus();}
+}
+byId('localModelCancel').addEventListener('click',async()=>{
+ if(!localUi.downloading)return;
+ try{
+  await window.lumavun.cancelLocalDownload();
+  setLocalStatus('Membatalkan unduhan '+localUi.downloading+'...');
+ }catch(error){setLocalStatus('Gagal membatalkan: '+String(error.message||error));}
+});
+if(window.lumavun&&typeof window.lumavun.onLocalAiEvent==='function'){
+ window.lumavun.onLocalAiEvent(event=>{
+  if(!event||typeof event!=='object')return;
+  if(event.type==='model-progress'){
+   localUi.downloading=event.model||localUi.downloading;
+   setLocalStatus((event.model||'Model')+': '+String(event.status||'Downloading')+
+    (event.percent===null||event.percent===undefined?'':' · '+event.percent+'%'),event.percent);
+  }else if(event.type==='runtime-progress'){
+   setLocalStatus(event.message||'Ollama install progress…');
+  }else if(['model-installed','runtime-installed','model-error','runtime-error'].includes(event.type)){
+   setLocalStatus(event.message||event.type);
+  }
+  renderLocalStatus();
+ });
+}
+showPage('chart');
