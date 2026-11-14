@@ -176,6 +176,12 @@ fun TradingViewIndicatorsDialog(
     onToggleAtr: () -> Unit,
     onToggleSupportResistance: () -> Unit,
     onToggleSmc: () -> Unit = {},
+    showSmcProV5: Boolean = false,
+    onToggleSmcProV5: () -> Unit = {},
+    smcProQuality: String = "STRICT",
+    onChangeSmcProQuality: (String) -> Unit = {},
+    smcProHtfBias: Boolean = true,
+    onChangeSmcProHtfBias: (Boolean) -> Unit = {},
     onToggleIct: () -> Unit = {},
     onToggleAmd: () -> Unit = {},
     onToggleSignalOverlay: () -> Unit,
@@ -645,6 +651,54 @@ fun TradingViewIndicatorsDialog(
                             onToggle = onToggleSmc,
                             tag = "modal_toggle_smc"
                         )
+                    }
+
+                    if (matches("SMC Entry Models PRO v5", "smc pro v5 sweep choch mss order block fvg sniper pending entry tp sl follow candle", isOverlay = true)) {
+                        IndicatorConfigCard(
+                            title = "SMC Entry Models PRO v5",
+                            subtitle = "M1 Sweep + CHoCH, M2 OB, M3 FVG · closed-candle only",
+                            enabled = showSmcProV5,
+                            onToggle = onToggleSmcProV5,
+                            tag = "modal_toggle_smc_pro_v5"
+                        ) {
+                            Text(
+                                "Quality filter (heuristic, not win probability)",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                verticalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                CompactPeriodPresetChip("Strict 85" + if (smcProQuality == "STRICT") " ✓" else "") {
+                                    onChangeSmcProQuality("STRICT")
+                                }
+                                CompactPeriodPresetChip("Normal 75" + if (smcProQuality == "NORMAL") " ✓" else "") {
+                                    onChangeSmcProQuality("NORMAL")
+                                }
+                                CompactPeriodPresetChip("Loose 65" + if (smcProQuality == "LOOSE") " ✓" else "") {
+                                    onChangeSmcProQuality("LOOSE")
+                                }
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    "Closed HTF bias filter",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Switch(checked = smcProHtfBias, onCheckedChange = onChangeSmcProHtfBias)
+                            }
+                            Text(
+                                "Pending retests are analytical only. SL takes priority when SL and TP are touched in the same candle.",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
 
                     if (matches("ICT (Inner Circle Trader)", "ict inner circle trader order blocks liquidity sweep ob", isOverlay = true)) {
