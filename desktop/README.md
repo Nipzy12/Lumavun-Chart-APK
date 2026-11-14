@@ -1,4 +1,4 @@
-# LUMAVUN Chart Desktop: Windows Preview v0.2
+# LUMAVUN Chart Desktop: Windows Preview v0.3
 
 This is a standalone Electron app **ported from the LUMAVUN Chart Android codebase** (Kotlin + Jetpack Compose). It is not a binary APK-to-EXE converter, and **not yet at feature parity** with Android.
 
@@ -43,3 +43,15 @@ Local build (Node.js 22 and Windows):
 ## Security
 
 Electron sandbox, context isolation and disabled Node integration. Renderer uses fixed IPC methods, not arbitrary HTTP requests. External requests originate in main process using fixed public provider hosts or validated user-supplied gateway. No brokerage order execution.
+
+## AI Analyst in Windows Preview v0.3
+
+AI Analyst now has two model backends:
+- **Ollama local**: Install Ollama separately on Windows, run PowerShell command ollama pull qwen2.5:3b, then open the EXE, choose Ollama, click Cari model Ollama, select a model, and Hubungkan model. The app connects only to http://127.0.0.1:11434. No LLM weights are bundled with the EXE.
+- **Custom OpenAI-compatible API**: Configure an HTTPS base URL ending /v1, model name, and optional API key. The request uses the conventional chat/completions endpoint. Credentials are held in Electron main-process memory only, never written to disk, and are not returned to the UI. Custom API sends the selected market snapshot to your configured remote service.
+
+Click **Analisis chart saat ini** when the provider has loaded at least 60 verified candles. The main process keeps a recent market-data cache (2-minute freshness requirement); the renderer cannot upload arbitrary candle data for AI requests. The actual prompt includes 50 OHLC candles, EMA20/50, RSI14 and nearby support/resistance. Analysis is on-demand only and never places broker orders.
+
+The model must reply with JSON. Responses are treated as untrusted text. Incoherent entry, stop-loss and take-profit values are downgraded to WAIT and are never sent to real or virtual execution. There is no win-rate guarantee. Ollama inference itself can run offline after the model has been downloaded, but fresh market OHLC still requires the associated provider's connectivity.
+
+Known gaps: LLM vision/screenshot analysis, AI auto-bot, fully offline historical OHLC, replay data, and full Android AI feature parity. Live Ollama and third-party API compatibility must be tested on a Windows machine after packaging. Unit tests and packaging checks cannot prove functional interactive integration.

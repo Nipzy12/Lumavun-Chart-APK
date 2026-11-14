@@ -10,7 +10,7 @@
 <body>
 <div class="app">
 <header class="topbar">
- <div class="brand"><span class="moon"></span><div><strong>LUMAVUN</strong><small>CHART DESKTOP · PREVIEW 0.2</small></div></div>
+ <div class="brand"><span class="moon"></span><div><strong>LUMAVUN</strong><small>CHART DESKTOP · PREVIEW 0.3</small></div></div>
  <div class="topright"><span class="eyebrow">SOURCE</span><span id="providerBadge" class="provider">BINANCE SPOT</span><span id="status" class="status">READY</span></div>
 </header>
 <div class="workspace">
@@ -89,7 +89,46 @@
     <div class="paperFoot"><span id="paperHistory" class="muted"></span><button id="paperReset" class="subtleButton" type="button">Reset simulation</button></div>
    </section>
   </div>
-  <footer>DESKTOP PREVIEW v0.2 · Data market read-only · AI LLM, auto-bot Android, dan eksekusi broker asli tidak tersedia.</footer>
+
+<section class="aiPanel" aria-labelledby="aiHeading">
+ <div class="aiHeader">
+  <div><span class="label">AI ANALYST</span><h2 id="aiHeading">Model AI untuk Analisis Chart</h2></div>
+  <span class="miniTag">ON-DEMAND · NO AUTO ORDERS</span>
+ </div>
+ <p class="aiIntro">Analisis dari OHLC terverifikasi + EMA, RSI, dan struktur harga. Model lokal berjalan lewat Ollama; API khusus membutuhkan koneksi internet. Harga dan rencana yang diberikan AI bukan transaksi nyata.</p>
+ <form id="aiSettings" class="aiSettings">
+  <label for="aiMode">MODEL PROVIDER
+   <select id="aiMode" class="textField"><option value="OLLAMA">Ollama (Windows, lokal)</option><option value="CUSTOM">Custom OpenAI-compatible API</option></select>
+  </label>
+  <label for="aiModel">NAMA MODEL
+   <input id="aiModel" class="textField" type="text" required maxlength="100" autocomplete="off" spellcheck="false" list="aiInstalledModels" placeholder="Contoh: qwen2.5:3b">
+   <datalist id="aiInstalledModels"></datalist>
+  </label>
+  <div id="aiRemote" class="aiRemote" hidden>
+   <label for="aiEndpoint">BASE URL (HTTPS, /v1)
+    <input id="aiEndpoint" class="textField" type="url" autocomplete="off" placeholder="https://api.example.com/v1">
+   </label>
+   <label for="aiToken">API KEY (OPSIONAL)
+    <input id="aiToken" class="textField" type="password" autocomplete="off" placeholder="Tidak akan disimpan di disk">
+   </label>
+  </div>
+  <div class="aiActions">
+   <button id="aiDiscover" type="button" class="subtleButton">Cari model Ollama</button>
+   <button type="submit" class="refresh">Hubungkan model</button>
+   <button id="aiRun" type="button" class="aiPrimary" disabled>Analisis chart saat ini</button>
+  </div>
+ </form>
+ <p id="aiStatus" class="muted" role="status" aria-live="polite">Belum terhubung. Ollama harus terpasang dan memiliki model lokal. API key hanya disimpan selama aplikasi terbuka.</p>
+ <article id="aiResult" class="aiResult" hidden>
+  <div class="aiResultHeader"><strong id="aiDecision">WAIT</strong><span id="aiMeta" class="muted"></span></div>
+  <p id="aiSummary"></p>
+  <p id="aiLevels" class="aiLevels"></p>
+  <ul id="aiReasoning"></ul>
+  <p id="aiWarning" class="aiWarning"></p>
+  <p class="muted">Skenario hipotetis. Bukan sinyal terverifikasi, bukan eksekusi broker, dan tidak terhubung ke paper bot otomatis.</p>
+ </article>
+</section>
+  <footer>DESKTOP PREVIEW v0.3 · Data market read-only · AI LLM, auto-bot Android, dan eksekusi broker asli tidak tersedia.</footer>
  </main>
 </div>
 </div>
