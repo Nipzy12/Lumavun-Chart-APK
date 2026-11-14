@@ -65,3 +65,54 @@
 .aiPreview{margin:15px 0;padding:12px;background:#0a1424;border:1px solid #344a6b;border-radius:9px;max-width:930px}
 .aiPreview img{max-width:100%;display:block;border-radius:4px;background:#0e1727}
 .aiPreview figcaption{margin-top:9px;color:#91a6c4;font-size:10px;line-height:1.5}
+
+
+/* Desktop v0.5: routed multipage shell */
+.pageNav{display:flex;gap:5px;align-items:center;padding:9px 24px;background:#0b1425;border-bottom:1px solid #24334c;min-height:61px;overflow-x:auto}
+.navTab{border:1px solid transparent;border-radius:9px;padding:10px 17px;background:transparent;color:#8b9dbd;white-space:nowrap;font-size:12px;font-weight:750;transition:background .12s,color .12s}
+.navTab:hover{background:#202d45;color:#e1e9fa}
+.navTab.active{background:#283856;border-color:#42597b;color:#ecf1fd}
+.navIcon{display:inline-flex;margin-right:7px;font-size:17px;font-weight:400;vertical-align:middle;color:#a9a5ef}
+.routePage[hidden]{display:none!important}
+.routePage{animation:routeFade .15s ease-out;min-height:400px}
+@keyframes routeFade{from{opacity:.6}to{opacity:1}}
+.workspace{min-height:calc(100vh - 137px)}
+.pageIntro{margin:6px 0 24px;padding:0 2px}
+.pageIntro h1{margin:9px 0;font-size:27px;letter-spacing:-.02em}
+.pageIntro p{color:#8fa1bc;max-width:720px;font-size:12px;line-height:1.7}
+.paperPageGrid{grid-template-columns:minmax(0,790px);margin-top:20px}
+#page-paper .detailCard{padding:22px}
+#page-ai .aiPanel{margin-top:0}
+#page-settings .gatewayPanel{display:block;border:1px solid #2b3955;background:#101b2e;border-radius:12px;max-width:760px;margin:16px 0;padding:24px}
+#page-settings .gatewayPanel summary{font-size:14px;color:#e4ebfc}
+#page-settings .gatewayPanel .textField{max-width:620px}
+#page-settings .settingsHint{max-width:760px;padding:20px 23px;border-radius:10px;border:1px solid #283950;background:#111c2d}
+.settingsHint strong{font-size:12px}
+.settingsHint p{font-size:11px;color:#93a7c3;line-height:1.7}
+.modelHero{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:18px;background:linear-gradient(110deg,#192443,#101b30);border:1px solid #3c4e76;border-radius:13px;padding:22px}
+.modelHero h2{font-size:20px;margin:10px 0}
+.modelHero p{font-size:11px;line-height:1.6;max-width:560px}
+.modelActions{display:flex;flex-wrap:wrap;gap:9px}
+.modelActions button{font-size:11px;padding:11px 13px}
+.modelActions button:disabled,.modelCatalog button:disabled{opacity:.48;cursor:not-allowed}
+.modelSectionTitle{display:flex;align-items:end;justify-content:space-between;gap:14px;margin:28px 0 14px}
+.modelSectionTitle h2{margin:8px 0 0;font-size:19px}
+.modelCatalog{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:13px}
+.modelCard{padding:20px;border:1px solid #283d59;border-radius:12px;background:#111e32;display:flex;flex-direction:column;gap:11px;min-height:195px}
+.modelCardHeader{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.modelChip{font-size:9px;color:#b5b6ff;background:#292b56;border-radius:5px;padding:6px 8px;font-weight:800}
+.modelChip.vision{color:#f0cfa7;background:#4a382d}
+.modelCard h3{margin:0;font-size:15px}
+.modelCard small{font-size:10px;color:#8597b1;font-family:Consolas,monospace}
+.modelCard p{font-size:11px;color:#9aaecb;line-height:1.6;flex:1}
+.modelCardActions{display:flex;gap:8px;flex-wrap:wrap}
+.modelCardActions button{padding:9px 11px;font-size:11px;border-radius:7px}
+.modelCardActions .installModel{background:#685ed9;color:#fff;border:0;font-weight:800}
+.modelCardActions .chooseModel{background:#203855;color:#bdd0ed;border:1px solid #476184}
+.modelActivity{border:1px solid #2e4364;background:#101b2c;border-radius:12px;padding:20px;margin-top:16px;max-width:850px}
+.modelActivityTop{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.modelActivityTop strong{font-size:12px}
+.modelActivity>p{font-size:11px;color:#a9bdd8;line-height:1.7}
+.modelActivity progress{display:block;width:100%;accent-color:#9184f4;height:13px;margin-top:12px}
+.modelNote{color:#849bb9;font-size:11px;max-width:830px;line-height:1.8;margin-top:20px}
+@media(max-width:1000px){.pageNav{padding:9px 12px}.navTab{padding:9px 11px}.modelHero{align-items:start}}

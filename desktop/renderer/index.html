@@ -10,9 +10,17 @@
 <body>
 <div class="app">
 <header class="topbar">
- <div class="brand"><span class="moon"></span><div><strong>LUMAVUN</strong><small>CHART DESKTOP · PREVIEW 0.4</small></div></div>
+ <div class="brand"><span class="moon"></span><div><strong>LUMAVUN</strong><small>CHART DESKTOP · PREVIEW 0.5</small></div></div>
  <div class="topright"><span class="eyebrow">SOURCE</span><span id="providerBadge" class="provider">BINANCE SPOT</span><span id="status" class="status">READY</span></div>
 </header>
+
+<nav id="pageNav" class="pageNav" aria-label="Navigasi utama">
+ <button type="button" data-route="chart" class="navTab active" aria-current="page"><span class="navIcon">◫</span> Chart</button>
+ <button type="button" data-route="ai" class="navTab"><span class="navIcon">✦</span> AI Analyst</button>
+ <button type="button" data-route="models" class="navTab"><span class="navIcon">⬡</span> AI Models</button>
+ <button type="button" data-route="paper" class="navTab"><span class="navIcon">▤</span> Paper Trading</button>
+ <button type="button" data-route="settings" class="navTab"><span class="navIcon">⚙</span> Settings</button>
+</nav>
 <div class="workspace">
  <aside class="sidebar">
   <div class="section-heading"><span>WATCHLIST</span><span id="watchCount">0 PAIRS</span></div>
@@ -25,20 +33,10 @@
    <button type="submit" title="Validasi dan tambahkan pair">+</button>
   </form>
   <div id="watchlist" class="watchlist"></div>
-  <details class="gatewayPanel"><summary>EXNESS GATEWAY</summary>
-   <p>Gunakan gateway HTTPS milikmu. Bukan endpoint publik resmi Exness.</p>
-   <form id="gatewayForm">
-    <label for="gatewayUrl">HTTPS GATEWAY URL</label>
-    <input id="gatewayUrl" class="textField" type="url" autocomplete="off" placeholder="https://gateway.example.org" required>
-    <label for="gatewayToken">SESSION TOKEN (opsional)</label>
-    <input id="gatewayToken" class="textField" type="password" autocomplete="off" placeholder="Token tidak disimpan di disk">
-    <button class="refresh block" type="submit">Verifikasi gateway</button>
-    <p id="gatewayState" class="muted" aria-live="polite">Belum dikonfigurasi</p>
-   </form>
-  </details>
   <div class="asidefoot"><span class="tiny-dot"></span> Data provider asli. Jika feed gagal, harga tidak diganti dengan simulasi.</div>
  </aside>
  <main class="main">
+ <section id="page-chart" class="routePage" data-page="chart">
   <div class="symbolbar">
    <div><span class="label">MARKET OVERVIEW</span><h1 id="pairTitle">BTC / USDT</h1><div id="lastUpdate" class="muted">Belum memuat data</div></div>
    <div class="pricearea"><div id="lastPrice" class="price">—</div><span id="priceChange" class="change">—</span></div>
@@ -63,13 +61,18 @@
    <article class="stat"><span>RESISTANCE</span><strong id="resistanceValue">—</strong><small>Fractal pivot</small></article>
   </section>
   <div class="detailgrid">
-   <section class="detailCard">
+<section class="detailCard">
     <div class="detailHeader"><span>TECHNICAL INSIGHT</span><span class="miniTag">LOCAL ENGINE · NOT LLM</span></div>
     <div class="insightState" id="insightState">MENUNGGU DATA</div>
     <p id="insightSummary">Analisis lokal dihitung dari OHLC asli setelah feed terhubung.</p>
     <ul id="insightDetails"></ul>
    </section>
-   <section class="detailCard">
+  </div>
+
+</section>
+<section id="page-paper" class="routePage" data-page="paper" hidden>
+ <div class="pageIntro"><span class="label">SIMULATED TRADING</span><h1>Paper Trading</h1><p>Posisi virtual tidak mengirim order ke broker. Harga dan evaluasi SL/TP berdasarkan feed Binance yang tersedia.</p></div>
+ <div class="detailgrid paperPageGrid"><section class="detailCard">
     <div class="detailHeader"><span>PAPER TRADING</span><span class="miniTag">SIMULATION ONLY</span></div>
     <div class="paperMetrics">
      <div><small>BALANCE</small><strong id="paperBalance">$1,000.00</strong></div>
@@ -87,9 +90,9 @@
     <p id="paperNotice" class="muted" aria-live="polite"></p>
     <div id="paperPositions" class="positions"></div>
     <div class="paperFoot"><span id="paperHistory" class="muted"></span><button id="paperReset" class="subtleButton" type="button">Reset simulation</button></div>
-   </section>
-  </div>
-
+   </section></div>
+</section>
+<section id="page-ai" class="routePage" data-page="ai" hidden>
 <section class="aiPanel" aria-labelledby="aiHeading">
  <div class="aiHeader">
   <div><span class="label">AI ANALYST</span><h2 id="aiHeading">Model AI untuk Analisis Chart</h2></div>
@@ -144,7 +147,44 @@
   <p class="muted">Skenario hipotetis. Bukan sinyal terverifikasi, bukan eksekusi broker, dan tidak terhubung ke paper bot otomatis.</p>
  </article>
 </section>
-  <footer>DESKTOP PREVIEW v0.4 · Data market read-only · AI Analyst & Vision on-demand, tanpa auto-bot atau eksekusi order broker.</footer>
+
+</section>
+<section id="page-models" class="routePage" data-page="models" hidden>
+ <div class="pageIntro"><span class="label">LOCAL AI SYSTEM</span><h1>AI Model Manager</h1><p>Pasang Ollama dan unduh model lokal langsung dari aplikasi. Model disimpan di komputer Windows, bukan dalam EXE. Instalasi pertama membutuhkan internet.</p></div>
+ <div class="modelHero">
+  <div><span class="label">OLLAMA RUNTIME</span><h2 id="localRuntimeTitle">Memeriksa instalasi...</h2><p id="localRuntimeDetail" class="muted">Runtime perlu berjalan di Windows untuk mengaktifkan AI offline.</p></div>
+  <div class="modelActions">
+   <button type="button" id="localRuntimeInstall" class="aiPrimary">Install Ollama via WinGet</button>
+   <button type="button" id="localRuntimeStart" class="refresh">Jalankan Server</button>
+   <button type="button" id="localRuntimeRefresh" class="subtleButton">Refresh Status</button>
+  </div>
+ </div>
+ <div class="modelSectionTitle"><div><span class="label">CURATED MODELS</span><h2>Choose Your Local AI</h2></div><span id="modelInstalledCount" class="miniTag">0 installed</span></div>
+ <div id="localModelCatalog" class="modelCatalog" aria-label="Model AI yang tersedia untuk diinstal"></div>
+ <div class="modelActivity">
+  <div class="modelActivityTop"><strong>Installation activity</strong><button id="localModelCancel" type="button" class="subtleButton" disabled>Cancel Download</button></div>
+  <p id="localModelStatus" role="status" aria-live="polite">Pilih model untuk mengunduhnya.</p>
+  <progress id="localModelProgress" max="100" value="0" hidden>0%</progress>
+ </div>
+ <p class="modelNote">Instalasi runtime melalui WinGet menggunakan paket Ollama.Ollama. Model diunduh melalui API lokal Ollama. Penyimpanan dan penggunaan RAM mengikuti model serta perangkatmu. Aplikasi tidak memasang model tanpa tindakanmu.</p>
+</section>
+<section id="page-settings" class="routePage" data-page="settings" hidden>
+ <div class="pageIntro"><span class="label">APPLICATION CONFIGURATION</span><h1>Settings</h1><p>Pengaturan data broker dan preferensi aplikasi desktop.</p></div>
+   <details class="gatewayPanel"><summary>EXNESS GATEWAY</summary>
+   <p>Gunakan gateway HTTPS milikmu. Bukan endpoint publik resmi Exness.</p>
+   <form id="gatewayForm">
+    <label for="gatewayUrl">HTTPS GATEWAY URL</label>
+    <input id="gatewayUrl" class="textField" type="url" autocomplete="off" placeholder="https://gateway.example.org" required>
+    <label for="gatewayToken">SESSION TOKEN (opsional)</label>
+    <input id="gatewayToken" class="textField" type="password" autocomplete="off" placeholder="Token tidak disimpan di disk">
+    <button class="refresh block" type="submit">Verifikasi gateway</button>
+    <p id="gatewayState" class="muted" aria-live="polite">Belum dikonfigurasi</p>
+   </form>
+  </details>
+
+ <div class="settingsHint"><strong>Data &amp; privacy</strong><p>Token Exness dan API key model hanya disimpan selama aplikasi terbuka. Watchlist dan akun paper trading tersimpan lokal. Pengaturan instalasi model tetap berada di Ollama Windows.</p></div>
+</section>
+  <footer>DESKTOP PREVIEW v0.5 · Data market read-only · AI Analyst & Vision on-demand, tanpa auto-bot atau eksekusi order broker.</footer>
  </main>
 </div>
 </div>

@@ -8,5 +8,16 @@ contextBridge.exposeInMainWorld('lumavun',Object.freeze({
  listAiModels:()=>ipcRenderer.invoke('lumavun:ai:models'),
  configureAi:(config)=>ipcRenderer.invoke('lumavun:ai:configure',config),
  analyzeAi:(provider,symbol,interval)=>ipcRenderer.invoke('lumavun:ai:analyze',{provider,symbol,interval}),
- analyzeVision:(provider,symbol,interval,imageDataUrl)=>ipcRenderer.invoke('lumavun:ai:analyze',{provider,symbol,interval,imageDataUrl})
+ analyzeVision:(provider,symbol,interval,imageDataUrl)=>ipcRenderer.invoke('lumavun:ai:analyze',{provider,symbol,interval,imageDataUrl}),
+ localAiStatus:()=>ipcRenderer.invoke('lumavun:local-ai:status'),
+ installLocalRuntime:()=>ipcRenderer.invoke('lumavun:local-ai:install-runtime'),
+ startLocalRuntime:()=>ipcRenderer.invoke('lumavun:local-ai:start-runtime'),
+ pullLocalModel:(model)=>ipcRenderer.invoke('lumavun:local-ai:pull-model',model),
+ cancelLocalDownload:()=>ipcRenderer.invoke('lumavun:local-ai:cancel-download'),
+ onLocalAiEvent:(listener)=>{
+  if(typeof listener!=='function')throw new TypeError('Listener must be a function.');
+  const handler=(_event,data)=>listener(data);
+  ipcRenderer.on('lumavun:local-ai:event',handler);
+  return ()=>ipcRenderer.removeListener('lumavun:local-ai:event',handler);
+ }
 }));

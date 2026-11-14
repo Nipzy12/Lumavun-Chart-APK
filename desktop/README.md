@@ -1,4 +1,4 @@
-# LUMAVUN Chart Desktop: Windows Preview v0.4
+# LUMAVUN Chart Desktop: Windows Preview v0.5
 
 This is a standalone Electron app **ported from the LUMAVUN Chart Android codebase** (Kotlin + Jetpack Compose). It is not a binary APK-to-EXE converter, and **not yet at feature parity** with Android.
 
@@ -71,3 +71,32 @@ Known gaps: LLM vision/screenshot analysis, AI auto-bot, fully offline historica
 ### Windows UI smoke test
 
 GitHub Actions runs a Playwright Electron window test before packaging. It checks app startup, chart canvas rendering, local watchlist, AI Vision controls, and provider/model switches. It uploads a screenshot as artifact LUMAVUN-Windows-UI-Smoke. This does not validate external market data feeds or live Ollama inference. Windows EXE is unsigned.
+
+
+## Windows Desktop v0.5: multipage + in-app AI installation
+
+The desktop interface is now organized into five navigable pages: **Chart**, **AI Analyst**, **AI Models**, **Paper Trading**, and **Settings**. The watchlist remains visible in the sidebar and Exness gateway configuration lives on the Settings page. All pages use local views inside the Electron app, not separate browser tabs or internet pages.
+
+### Install and use AI models without PowerShell
+
+1. Open **AI Models** in LUMAVUN Chart.
+2. Click **Install Ollama via WinGet** and explicitly approve installation. The app launches the Windows WinGet package ID **Ollama.Ollama** with a fixed exact-match command, without shell interpolation.
+3. After installation, click **Jalankan Server** (if Ollama is not yet online), then **Refresh Status**.
+4. Pick one of the curated models:
+   - qwen2.5:1.5b: a lightweight text-only model
+   - qwen2.5:3b: a medium text-only model
+   - qwen2.5vl:3b: a Vision-capable model for chart screenshots
+5. Click **Install Model** and approve the potentially multi-gigabyte download. Progress and cancellation are available inside AI Models. Model installation uses the Ollama local API **POST /api/pull**, not arbitrary shell commands.
+6. Once installed, click **Use in Analyst** to switch to AI Analyst and choose the installed model, then click **Hubungkan model**. Chart data is still read-only.
+
+The Windows EXE **does not bundle Ollama itself or any model weights**. Instead, LUMAVUN installs the official Windows runtime through WinGet and downloads user-selected model files into Ollama's local storage. This keeps the LUMAVUN EXE small relative to bundled model weights, supports updates, and allows model inference to run offline once downloaded. Installation/downloads need internet, sufficient storage and RAM; local inference speed depends on hardware.
+
+If WinGet is missing, the app reports that Windows App Installer is required. A Windows 10 22H2 or newer environment is recommended by Ollama. If the runtime is installed in a non-standard directory and is not serving the loopback API, automatic startup through the Settings page may not locate it. The model manager never accepts arbitrary executable paths or shell arguments from the UI.
+
+### Security and verification
+
+The model-installer IPC exposes only fixed operations to detect the local runtime, run WinGet for Ollama.Ollama, start a standard user-local Ollama server, pull a validated model name, or cancel the active download. AI model data is fetched only from http://127.0.0.1:11434. No file/desktop access is granted to model installers.
+
+Existing API keys remain in main-process memory, and neither AI inference nor model installation can submit broker orders.
+
+GitHub Actions runs unit tests for the installer, Windows Electron multipage UI smoke tests, and NSIS/portable EXE packaging. Live runtime installation and model downloads must still be validated manually on an actual Windows device; mock tests never install programs during CI.

@@ -3,10 +3,18 @@ const {app,BrowserWindow,ipcMain} = require('electron');
 const path=require('node:path');
 const market=require('./core/market.cjs');
 const ai=require('./core/ai-analyst.cjs');
+const {LocalAiManager}=require('./core/local-ai-manager.cjs');
 const hosts=['https://api.binance.com','https://api1.binance.com','https://data-api.binance.vision'];
 let gateway={url:'',token:'',symbols:[]};
 let aiConfig=null,aiBusy=false;
 const verifiedCandleCache=new Map();
+const localAiManager=new LocalAiManager({
+ notify:event=>{
+  for(const window of BrowserWindow.getAllWindows()){
+   if(!window.isDestroyed())window.webContents.send('lumavun:local-ai:event',event);
+  }
+ }
+});
 async function getJson(url,token='') {
  const controller=new AbortController();
  const timer=setTimeout(()=>controller.abort(),12000);
@@ -130,6 +138,13 @@ ipcMain.handle('lumavun:ai:analyze',async (_event,input)=>{
   return {...result,symbol,interval,asOfUtc:snapshot.asOfUtc};
  }finally{aiBusy=false;}
 });
+
+
+ipcMain.handle('lumavun:local-ai:status',()=>localAiManager.status());
+ipcMain.handle('lumavun:local-ai:install-runtime',()=>localAiManager.installRuntime());
+ipcMain.handle('lumavun:local-ai:start-runtime',()=>localAiManager.startRuntime());
+ipcMain.handle('lumavun:local-ai:pull-model',(_event,model)=>localAiManager.pullModel(model));
+ipcMain.handle('lumavun:local-ai:cancel-download',()=>localAiManager.cancelDownload());
 
 app.whenReady().then(()=>{
  app.setAppUserModelId('com.lumavun.chart.desktop');
