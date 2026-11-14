@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -145,9 +146,10 @@ fun ChartScreen(
     modifier: Modifier = Modifier
 ) {
     var showIndicatorsDialog by remember { mutableStateOf(false) }
-    var showSmcProV5 by rememberSaveable { mutableStateOf(false) }
-    var smcProQuality by rememberSaveable { mutableStateOf("STRICT") }
-    var smcProHtfBias by rememberSaveable { mutableStateOf(true) }
+    val smcPrefs = LocalContext.current.getSharedPreferences("lumavun_smc_entry_pro_v5", android.content.Context.MODE_PRIVATE)
+    var showSmcProV5 by rememberSaveable { mutableStateOf(smcPrefs.getBoolean("enabled", false)) }
+    var smcProQuality by rememberSaveable { mutableStateOf(smcPrefs.getString("quality", "STRICT") ?: "STRICT") }
+    var smcProHtfBias by rememberSaveable { mutableStateOf(smcPrefs.getBoolean("htf_bias", true)) }
     val smcProConfig = remember(smcProQuality, smcProHtfBias, activeTimeframe) {
         SmcEntryProV5Engine.Config(
             qualityMode = SmcEntryProV5Engine.QualityMode.valueOf(smcProQuality),
@@ -175,11 +177,20 @@ fun ChartScreen(
             onToggleIct = onToggleIct,
             onToggleAmd = onToggleAmd,
             showSmcProV5 = showSmcProV5,
-            onToggleSmcProV5 = { showSmcProV5 = !showSmcProV5 },
+            onToggleSmcProV5 = {
+                showSmcProV5 = !showSmcProV5
+                smcPrefs.edit().putBoolean("enabled", showSmcProV5).apply()
+            },
             smcProQuality = smcProQuality,
-            onChangeSmcProQuality = { smcProQuality = it },
+            onChangeSmcProQuality = {
+                smcProQuality = it
+                smcPrefs.edit().putString("quality", it).apply()
+            },
             smcProHtfBias = smcProHtfBias,
-            onChangeSmcProHtfBias = { smcProHtfBias = it },
+            onChangeSmcProHtfBias = {
+                smcProHtfBias = it
+                smcPrefs.edit().putBoolean("htf_bias", it).apply()
+            },
             onToggleSignalOverlay = onToggleSignalOverlay,
             onToggleSignalHistory = onToggleSignalHistory,
             onToggleTradePlanOverlay = onToggleTradePlanOverlay,
