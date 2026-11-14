@@ -32,7 +32,7 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Syntax validation
         run: npm run check:syntax
-      - name: Test market and trading utilities
+      - name: Test market, trading and AI utilities
         run: npm test
       - name: Build installer and portable EXE
         env:

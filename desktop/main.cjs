@@ -2,8 +2,11 @@
 const {app,BrowserWindow,ipcMain} = require('electron');
 const path=require('node:path');
 const market=require('./core/market.cjs');
+const ai=require('./core/ai-analyst.cjs');
 const hosts=['https://api.binance.com','https://api1.binance.com','https://data-api.binance.vision'];
 let gateway={url:'',token:'',symbols:[]};
+let aiConfig=null,aiBusy=false;
+const verifiedCandleCache=new Map();
 async function getJson(url,token='') {
  const controller=new AbortController();
  const timer=setTimeout(()=>controller.abort(),12000);
@@ -78,6 +81,9 @@ ipcMain.handle('lumavun:candles',async (_event,input)=>{
  else result=await getExness('/api/candles',{symbol,interval,limit},allowExnessSymbol(symbol));
  const candles=market.normalizeCandles(result);
  if(!candles.length)throw new Error(provider+' tidak mengembalikan candle OHLC yang valid.');
+ const cacheKey=provider+'|'+symbol+'|'+interval;
+ verifiedCandleCache.set(cacheKey,{data:candles,loadedAt:Date.now()});
+ if(verifiedCandleCache.size>25)verifiedCandleCache.delete(verifiedCandleCache.keys().next().value);
  return candles;
 });
 ipcMain.handle('lumavun:ticker',async (_event,input)=>{
@@ -89,6 +95,40 @@ ipcMain.handle('lumavun:ticker',async (_event,input)=>{
  else result=await getExness('/api/quote',{symbol},allowExnessSymbol(symbol));
  return market.normalizeQuote(result,symbol,provider);
 });
+
+ipcMain.handle('lumavun:ai:models',async ()=>ai.listOllamaModels());
+ipcMain.handle('lumavun:ai:configure',async (_event,raw)=>{
+ const config=ai.validateConfig(raw);
+ if(config.provider==='OLLAMA'){
+  const names=await ai.listOllamaModels();
+  if(!names.includes(config.model) && !names.includes(config.model+':latest')){
+   throw new Error('Model Ollama belum terinstal. Cek ollama list atau jalankan ollama pull '+config.model);
+  }
+ }
+ // Secrets are in main-process RAM only, never returned to renderer or persisted.
+ aiConfig=config;
+ return {provider:config.provider,model:config.model,configured:true,
+  note:config.provider==='OLLAMA'?'Model ditemukan pada Ollama lokal.':'Pengaturan disimpan sementara; koneksi API diuji saat Analyze.'};
+});
+ipcMain.handle('lumavun:ai:analyze',async (_event,input)=>{
+ if(!aiConfig)throw Error('Konfigurasikan model AI terlebih dahulu.');
+ const provider=String(input?.provider||'');
+ const symbol=market.symbol(input?.symbol,provider);
+ const interval=String(input?.interval||'');
+ if(!market.INTERVALS.has(interval))throw Error('Timeframe tidak didukung.');
+ const key=provider+'|'+symbol+'|'+interval;
+ const cache=verifiedCandleCache.get(key);
+ if(!cache||Date.now()-cache.loadedAt>120000||cache.data.length<60)
+  throw Error('Candle terbaru tidak tersedia. Refresh grafik dan ulangi analisis.');
+ if(aiBusy)throw Error('Analisis sebelumnya masih berlangsung.');
+ aiBusy=true;
+ try{
+  const snapshot=ai.createSnapshot({provider,symbol,interval,candles:cache.data});
+  const result=await ai.analyze(aiConfig,snapshot);
+  return {...result,symbol,interval,asOfUtc:snapshot.asOfUtc};
+ }finally{aiBusy=false;}
+});
+
 app.whenReady().then(()=>{
  app.setAppUserModelId('com.lumavun.chart.desktop');
  const window=new BrowserWindow({
