@@ -75,6 +75,8 @@ import com.example.chart.overlay.TradePlanOverlayMapper
 import com.example.chart.overlay.drawTradePlanOverlay
 import com.example.analysis.smc.LiquiditySweepEvent
 import com.example.analysis.smc.SmcAnalysisSnapshot
+import com.example.analysis.smc.SmcEntryProV5Engine
+import com.example.chart.overlay.drawSmcEntryProV5Overlay
 import com.example.analysis.technical.MarketTechnicalSnapshot
 import java.time.Instant
 import java.time.LocalTime
@@ -298,6 +300,8 @@ fun LightweightCandleChart(
     showMacd: Boolean,
     showSupportResistance: Boolean,
     showSmc: Boolean = false,
+    showSmcProV5: Boolean = false,
+    smcProConfig: SmcEntryProV5Engine.Config = SmcEntryProV5Engine.Config(),
     showIct: Boolean = false,
     showAmd: Boolean = false,
     snapshot: MarketTechnicalSnapshot? = null,
@@ -328,6 +332,18 @@ fun LightweightCandleChart(
     }
     val smcAnalysis = remember(snapshot?.smcAnalysis) {
         snapshot?.smcAnalysis
+    }
+
+    // Heavy indicator evaluation is memoized by CLOSED candles, not live ticks.
+    val smcProV5 = remember(
+        showSmcProV5, smcProConfig, symbol, timeframeKey, candles.size,
+        candles.firstOrNull()?.openTime,
+        candles.lastOrNull { it.isClosed }?.closeTime,
+        candles.lastOrNull { it.isClosed }?.close
+    ) {
+        if (showSmcProV5 && candles.isNotEmpty()) {
+            SmcEntryProV5Engine.calculate(candles, com.example.market.candle.Timeframe.fromInterval(timeframeKey), smcProConfig)
+        } else null
     }
 
     val openTimeToIndex: Map<Long, Int> = remember(candles.size, candles.firstOrNull()?.openTime, candles.lastOrNull()?.openTime) {
@@ -604,6 +620,7 @@ fun LightweightCandleChart(
                         crosshairIndex = inspectedIdx,
                         showSupportResistance = if (showSupportResistance) true else false,
                         showSmc = showSmc,
+                        smcProV5 = smcProV5,
                         showIct = showIct,
                         showAmd = showAmd,
                         marketStructure = marketStructure,
@@ -1309,6 +1326,7 @@ private fun DrawScope.drawMainCandlestickChart(
     crosshairIndex: Int?,
     showSupportResistance: Boolean,
     showSmc: Boolean,
+    smcProV5: SmcEntryProV5Engine.Result?,
     showIct: Boolean,
     showAmd: Boolean,
     marketStructure: MarketStructureAnalysis?,
@@ -1805,6 +1823,19 @@ private fun DrawScope.drawMainCandlestickChart(
                 labelMeasurer = labelMeasurer,
                 textMeasurer = textMeasurer,
                 marketStructure = marketStructure
+            )
+        }
+
+        // Native SMC Entry PRO v5 shares the candle price scale; never adjusts autoscaling.
+        if (smcProV5 != null && !smcProV5.htfUnavailable) {
+            drawSmcEntryProV5Overlay(
+                result = smcProV5,
+                startIndex = startIndex,
+                endIndexExclusive = endIndexExclusive,
+                slotWidth = slotWidth,
+                plotWidth = plotWidth,
+                priceToY = ::priceToY,
+                textMeasurer = textMeasurer
             )
         }
 
