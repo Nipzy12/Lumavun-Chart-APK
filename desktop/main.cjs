@@ -1,87 +1,106 @@
 'use strict';
-const {app, BrowserWindow, ipcMain} = require('electron');
-const path = require('node:path');
-
-const hosts = ['https://api.binance.com', 'https://api1.binance.com', 'https://data-api.binance.vision'];
-const intervals = new Set(['1m', '5m', '15m', '30m', '1h', '4h', '1d']);
-const symbolPattern = /^[A-Z0-9]{5,20}$/;
-
-function ensureSymbol(value) {
-  const symbol = String(value || '').trim().toUpperCase();
-  if (!symbolPattern.test(symbol) || !symbol.endsWith('USDT')) {
-    throw new Error('Only validated Binance spot USDT pairs are supported in this Windows preview.');
-  }
-  return symbol;
+const {app,BrowserWindow,ipcMain} = require('electron');
+const path=require('node:path');
+const market=require('./core/market.cjs');
+const hosts=['https://api.binance.com','https://api1.binance.com','https://data-api.binance.vision'];
+let gateway={url:'',token:'',symbols:[]};
+async function getJson(url,token='') {
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),12000);
+ try{
+  const headers={'Accept':'application/json'};
+  if(token)headers.Authorization='Bearer '+token;
+  const response=await fetch(url,{method:'GET',headers,redirect:'error',signal:controller.signal});
+  if(!response.ok)throw new Error('HTTP '+response.status+' from market provider');
+  const payload=await response.json();
+  if(!payload || typeof payload!=='object')throw new Error('Invalid JSON from market provider.');
+  return payload;
+ }finally{clearTimeout(timer);}
 }
-
-async function getBinance(resource, query) {
-  const params = new URLSearchParams(query);
-  let lastError = 'Market data unavailable';
-  for (const host of hosts) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 9500);
-      let response;
-      try {
-        response = await fetch(host + resource + '?' + params.toString(), {
-          headers: {'Accept': 'application/json'},
-          signal: controller.signal
-        });
-      } finally {
-        clearTimeout(timeout);
-      }
-      if (!response.ok) {
-        const err = await response.text();
-        if (response.status === 400 || response.status === 404) {
-          throw new Error('Symbol or timeframe rejected by Binance (' + response.status + ').');
-        }
-        lastError = 'Binance service returned HTTP ' + response.status + ' ' + err.slice(0, 100);
-        continue;
-      }
-      return await response.json();
-    } catch (error) {
-      if (error.message.startsWith('Symbol or timeframe rejected')) throw error;
-      lastError = error.name === 'AbortError' ? 'Market data request timed out.' : String(error.message).slice(0, 180);
-    }
-  }
-  throw new Error('Cannot retrieve verified Binance market data. ' + lastError);
+async function getBinance(endpoint,params){
+ const query=new URLSearchParams(params).toString();
+ let error;
+ for(const base of hosts){
+  try{return await getJson(base+endpoint+'?'+query);}
+  catch(e){error=e;}
+ }
+ throw new Error('Binance unavailable: '+String(error?.message||'network error'));
 }
-
-ipcMain.handle('lumavun:candles', async (_event, input) => {
-  const symbol = ensureSymbol(input && input.symbol);
-  const interval = String(input && input.interval || '');
-  if (!intervals.has(interval)) throw new Error('Unsupported timeframe.');
-  const limit = Math.max(30, Math.min(500, Math.floor(Number(input && input.limit) || 300)));
-  const data = await getBinance('/api/v3/klines', {symbol, interval, limit});
-  if (!Array.isArray(data) || !data.length) throw new Error('No verified candles returned.');
-  return data;
+async function getBiQuote(endpoint,params={}){
+ const query=new URLSearchParams(params).toString();
+ return getJson('https://biquote.io'+endpoint+(query?'?'+query:''));
+}
+function getGateway() {
+ if(!gateway.url||gateway.symbols.length===0)throw new Error('Exness gateway belum dikonfigurasi / instrumen belum diverifikasi.');
+ return gateway;
+}
+function allowExnessSymbol(sym){
+ const config=getGateway();
+ const found=config.symbols.find(x=>x.symbol===sym);
+ if(!found)throw new Error('Simbol '+sym+' tidak ada pada katalog gateway Exness terverifikasi.');
+ if(!['TRADING','ACTIVE','OPEN'].includes(found.status))throw new Error('Simbol Exness tidak berstatus trading: '+found.status);
+ return config;
+}
+async function getExness(endpoint,params,config){
+ const q=new URLSearchParams(params).toString();
+ return getJson(config.url+endpoint+(q?'?'+q:''),config.token);
+}
+ipcMain.handle('lumavun:gateway',async (_event,input)=>{
+ const url=market.validateGateway(input?.url);
+ const token=String(input?.token||'').trim();
+ if(token.length>4096||/[\r\n]/.test(token))throw new Error('Invalid gateway session token.');
+ // Auth is kept in the desktop main-process memory only. No token in localStorage.
+ const result=await getJson(url+'/api/symbols',token);
+ const symbols=market.normalizeSymbols(result);
+ if(!symbols.length)throw new Error('Gateway tidak mengembalikan katalog simbol terverifikasi.');
+ gateway={url,token,symbols};
+ return {url,count:symbols.length,symbols:symbols.filter(x=>['TRADING','ACTIVE','OPEN'].includes(x.status)).slice(0,150)};
 });
-
-ipcMain.handle('lumavun:ticker', async (_event, input) => {
-  const symbol = ensureSymbol(input && input.symbol);
-  const data = await getBinance('/api/v3/ticker/24hr', {symbol});
-  if (!data || data.symbol !== symbol || !(Number(data.lastPrice) > 0)) {
-    throw new Error('Ticker unavailable for the selected market.');
+ipcMain.handle('lumavun:symbols',async (_event,provider,query)=>{
+ if(provider==='EXNESS')return getGateway().symbols;
+ if(provider==='BIQUOTE'){
+  const q=String(query||'').trim().slice(0,40);
+  if(!q||!/^[A-Za-z0-9 ._-]+$/.test(q))throw new Error('Masukkan simbol atau nama instrumen untuk dicari.');
+  return market.normalizeSymbols(await getBiQuote('/api/symbols/search',{q}));
+ }
+ if(provider==='BINANCE')return [];
+ throw new Error('Unknown provider.');
+});
+ipcMain.handle('lumavun:candles',async (_event,input)=>{
+ const provider=String(input?.provider||'');
+ const symbol=market.symbol(input?.symbol,provider);
+ const interval=String(input?.interval||'');
+ if(!market.INTERVALS.has(interval))throw new Error('Unsupported timeframe.');
+ const limit=Math.max(30,Math.min(500,Math.floor(Number(input?.limit)||300)));
+ let result;
+ if(provider==='BINANCE')result=await getBinance('/api/v3/klines',{symbol,interval,limit});
+ else if(provider==='BIQUOTE')result=await getBiQuote('/api/'+encodeURIComponent(symbol)+'/ohlc',{interval,limit});
+ else result=await getExness('/api/candles',{symbol,interval,limit},allowExnessSymbol(symbol));
+ const candles=market.normalizeCandles(result);
+ if(!candles.length)throw new Error(provider+' tidak mengembalikan candle OHLC yang valid.');
+ return candles;
+});
+ipcMain.handle('lumavun:ticker',async (_event,input)=>{
+ const provider=String(input?.provider||'');
+ const symbol=market.symbol(input?.symbol,provider);
+ let result;
+ if(provider==='BINANCE')result=await getBinance('/api/v3/ticker/24hr',{symbol});
+ else if(provider==='BIQUOTE')result=await getBiQuote('/api/'+encodeURIComponent(symbol));
+ else result=await getExness('/api/quote',{symbol},allowExnessSymbol(symbol));
+ return market.normalizeQuote(result,symbol,provider);
+});
+app.whenReady().then(()=>{
+ app.setAppUserModelId('com.lumavun.chart.desktop');
+ const window=new BrowserWindow({
+  width:1510,height:980,minWidth:970,minHeight:700,title:'LUMAVUN Chart',
+  backgroundColor:'#080e1b',autoHideMenuBar:true,
+  webPreferences:{
+   preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,
+   contextIsolation:true,sandbox:true,webSecurity:true
   }
-  return {symbol: data.symbol, lastPrice: data.lastPrice, priceChangePercent: data.priceChangePercent, highPrice: data.highPrice, lowPrice: data.lowPrice};
+ });
+ window.webContents.setWindowOpenHandler(()=>({action:'deny'}));
+ window.webContents.on('will-navigate',event=>event.preventDefault());
+ window.loadFile(path.join(__dirname,'renderer','index.html'));
 });
-
-app.whenReady().then(() => {
-  app.setAppUserModelId('com.lumavun.chart.desktop');
-  const window = new BrowserWindow({
-    width: 1440, height: 920, minWidth: 880, minHeight: 620,
-    title: 'LUMAVUN Chart', backgroundColor: '#080e1b',
-    autoHideMenuBar: true,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.cjs'),
-      nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: true,
-      webSecurity: true
-    }
-  });
-  window.webContents.setWindowOpenHandler(() => ({action: 'deny'}));
-  window.webContents.on('will-navigate', (event) => event.preventDefault());
-  window.loadFile(path.join(__dirname, 'renderer', 'index.html'));
-});
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});

@@ -1,3 +1,4 @@
+(function(root){
 'use strict';
 // Manual paper trades only. Spot USDT-quoted units, no broker execution and no leverage.
 // Quotes are sampled; this is NOT a tick-accurate or exchange-grade backtest.
@@ -67,4 +68,7 @@ function restore(raw) {
  if (raw.positions.some(p=>!Number.isFinite(p.qty)||p.qty<=0||!Number.isFinite(p.entry)||p.entry<=0||!Number.isFinite(p.notional)||p.notional<=0||!Number.isFinite(p.last)||p.last<=0))return createAccount();
  return {balance:raw.balance,startingBalance:raw.startingBalance,positions:raw.positions.slice(0,3),history:raw.history.slice(0,100),seq:Math.max(0,Math.floor(Number(raw.seq)||0))};
 }
-module.exports={FEES_BPS,SLIPPAGE_BPS,createAccount,marginAvailable,open,close,mark,equity,restore};
+const api={FEES_BPS,SLIPPAGE_BPS,createAccount,marginAvailable,open,close,mark,equity,restore};
+if(typeof module!=='undefined'&&module.exports)module.exports=api;
+if(root)root.LumavunPaper=api;
+})(typeof window==='undefined'?null:window);

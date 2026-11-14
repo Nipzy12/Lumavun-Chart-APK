@@ -1,55 +1,102 @@
 <!doctype html>
 <html lang="id">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <title>LUMAVUN Chart</title>
-  <link rel="stylesheet" href="./styles.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>LUMAVUN Chart</title>
+<link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <div class="app">
-    <header class="topbar">
-      <div class="brand"><span class="moon"></span><div><strong>LUMAVUN</strong><small>CHART DESKTOP · PREVIEW 0.1</small></div></div>
-      <div class="topright"><span class="eyebrow">SOURCE</span><span class="provider">BINANCE SPOT</span><span id="status" class="status">READY</span></div>
-    </header>
-    <div class="workspace">
-      <aside class="sidebar">
-        <div class="section-heading"><span>WATCHLIST</span><span id="watchCount">0 PAIRS</span></div>
-        <form id="searchForm" class="searchForm">
-          <input id="symbolInput" aria-label="Cari pasangan Binance USDT" autocomplete="off" spellcheck="false" placeholder="BTCUSDT / ETHUSDT" maxlength="20">
-          <button title="Tambahkan pair" type="submit">+</button>
-        </form>
-        <div id="watchlist" class="watchlist"></div>
-        <div class="asidefoot"><span class="tiny-dot"></span> Harga asli dari Binance Spot. Tidak ada harga simulasi atau trading live.</div>
-      </aside>
-      <main class="main">
-        <div class="symbolbar">
-          <div><span class="label">MARKET OVERVIEW</span><h1 id="pairTitle">BTC / USDT</h1><div id="lastUpdate" class="muted">Belum memuat data</div></div>
-          <div class="pricearea"><div id="lastPrice" class="price">—</div><span id="priceChange" class="change">—</span></div>
-        </div>
-        <div class="toolbar">
-          <div id="timeframes" class="timeframes" role="group" aria-label="Timeframe"><button data-interval="1m">1m</button><button data-interval="5m">5m</button><button data-interval="15m" class="active">15m</button><button data-interval="30m">30m</button><button data-interval="1h">1H</button><button data-interval="4h">4H</button><button data-interval="1d">1D</button></div>
-          <div class="tools"><label><input id="toggleEma20" type="checkbox" checked>EMA 20</label><label><input id="toggleEma50" type="checkbox" checked>EMA 50</label><button id="refresh" class="refresh" type="button">↻ Refresh</button></div>
-        </div>
-        <section class="chartcard">
-          <div class="chartheading"><span id="chartLabel">BTCUSDT · 15m</span><span id="chartState" class="muted">Memuat grafik…</span></div>
-          <div id="chart" class="chart" role="img" aria-label="Grafik candlestick dari data OHLC Binance"></div>
-          <div id="error" class="error" role="alert" hidden></div>
-        </section>
-        <section class="stats">
-          <article class="stat"><span>RSI 14</span><strong id="rsiValue">—</strong><small>Wilder</small></article>
-          <article class="stat"><span>EMA 20</span><strong id="ema20Value">—</strong><small>Trend cepat</small></article>
-          <article class="stat"><span>EMA 50</span><strong id="ema50Value">—</strong><small>Trend menengah</small></article>
-          <article class="stat"><span>SUPPORT</span><strong id="supportValue">—</strong><small>Fractal pivot</small></article>
-          <article class="stat"><span>RESISTANCE</span><strong id="resistanceValue">—</strong><small>Fractal pivot</small></article>
-        </section>
-        <footer>DESKTOP PREVIEW · READ-ONLY MARKET DATA · Fitur AI, Exness gateway, paper trading, dan akun Android belum dipindahkan.</footer>
-      </main>
-    </div>
+<div class="app">
+<header class="topbar">
+ <div class="brand"><span class="moon"></span><div><strong>LUMAVUN</strong><small>CHART DESKTOP · PREVIEW 0.2</small></div></div>
+ <div class="topright"><span class="eyebrow">SOURCE</span><span id="providerBadge" class="provider">BINANCE SPOT</span><span id="status" class="status">READY</span></div>
+</header>
+<div class="workspace">
+ <aside class="sidebar">
+  <div class="section-heading"><span>WATCHLIST</span><span id="watchCount">0 PAIRS</span></div>
+  <label class="minorLabel" for="marketProvider">MARKET PROVIDER</label>
+  <select id="marketProvider" class="textField">
+   <option value="BINANCE">Binance Spot</option><option value="BIQUOTE">BiQuote</option><option value="EXNESS">Exness Gateway</option>
+  </select>
+  <form id="searchForm" class="searchForm">
+   <input id="symbolInput" aria-label="Cari simbol pada provider terpilih" autocomplete="off" spellcheck="false" placeholder="BTCUSDT / XAUUSD" maxlength="20">
+   <button type="submit" title="Validasi dan tambahkan pair">+</button>
+  </form>
+  <div id="watchlist" class="watchlist"></div>
+  <details class="gatewayPanel"><summary>EXNESS GATEWAY</summary>
+   <p>Gunakan gateway HTTPS milikmu. Bukan endpoint publik resmi Exness.</p>
+   <form id="gatewayForm">
+    <label for="gatewayUrl">HTTPS GATEWAY URL</label>
+    <input id="gatewayUrl" class="textField" type="url" autocomplete="off" placeholder="https://gateway.example.org" required>
+    <label for="gatewayToken">SESSION TOKEN (opsional)</label>
+    <input id="gatewayToken" class="textField" type="password" autocomplete="off" placeholder="Token tidak disimpan di disk">
+    <button class="refresh block" type="submit">Verifikasi gateway</button>
+    <p id="gatewayState" class="muted" aria-live="polite">Belum dikonfigurasi</p>
+   </form>
+  </details>
+  <div class="asidefoot"><span class="tiny-dot"></span> Data provider asli. Jika feed gagal, harga tidak diganti dengan simulasi.</div>
+ </aside>
+ <main class="main">
+  <div class="symbolbar">
+   <div><span class="label">MARKET OVERVIEW</span><h1 id="pairTitle">BTC / USDT</h1><div id="lastUpdate" class="muted">Belum memuat data</div></div>
+   <div class="pricearea"><div id="lastPrice" class="price">—</div><span id="priceChange" class="change">—</span></div>
   </div>
-  <script src="./vendor/lightweight-charts.js"></script>
-  <script src="../core/indicators.js"></script>
-  <script src="./app.js"></script>
+  <div class="toolbar">
+   <div id="timeframes" class="timeframes" role="group" aria-label="Timeframe">
+    <button data-interval="1m">1m</button><button data-interval="5m">5m</button><button data-interval="15m">15m</button>
+    <button data-interval="30m">30m</button><button data-interval="1h">1H</button><button data-interval="4h">4H</button><button data-interval="1d">1D</button>
+   </div>
+   <div class="tools"><label><input id="toggleEma20" type="checkbox" checked>EMA 20</label><label><input id="toggleEma50" type="checkbox" checked>EMA 50</label><button id="refresh" class="refresh" type="button">↻ Refresh</button></div>
+  </div>
+  <section class="chartcard">
+   <div class="chartheading"><span id="chartLabel">BTCUSDT · 15m</span><span id="chartState" class="muted">Memuat grafik…</span></div>
+   <div id="chart" class="chart" role="img" aria-label="Grafik candlestick dari provider aktif"></div>
+   <div id="error" class="error" role="alert" hidden></div>
+  </section>
+  <section class="stats">
+   <article class="stat"><span>RSI 14</span><strong id="rsiValue">—</strong><small>Wilder</small></article>
+   <article class="stat"><span>EMA 20</span><strong id="ema20Value">—</strong><small>Trend cepat</small></article>
+   <article class="stat"><span>EMA 50</span><strong id="ema50Value">—</strong><small>Trend menengah</small></article>
+   <article class="stat"><span>SUPPORT</span><strong id="supportValue">—</strong><small>Fractal pivot</small></article>
+   <article class="stat"><span>RESISTANCE</span><strong id="resistanceValue">—</strong><small>Fractal pivot</small></article>
+  </section>
+  <div class="detailgrid">
+   <section class="detailCard">
+    <div class="detailHeader"><span>TECHNICAL INSIGHT</span><span class="miniTag">LOCAL ENGINE · NOT LLM</span></div>
+    <div class="insightState" id="insightState">MENUNGGU DATA</div>
+    <p id="insightSummary">Analisis lokal dihitung dari OHLC asli setelah feed terhubung.</p>
+    <ul id="insightDetails"></ul>
+   </section>
+   <section class="detailCard">
+    <div class="detailHeader"><span>PAPER TRADING</span><span class="miniTag">SIMULATION ONLY</span></div>
+    <div class="paperMetrics">
+     <div><small>BALANCE</small><strong id="paperBalance">$1,000.00</strong></div>
+     <div><small>EQUITY</small><strong id="paperEquity">$1,000.00</strong></div>
+     <div><small>OPEN POSITIONS</small><strong id="paperCount">0</strong></div>
+    </div>
+    <p class="muted">Manual long/short virtual, khusus harga Binance USDT. Fee 0.10%/sisi + slippage 0.02%/sisi. Quote diperiksa tiap refresh, bukan tick-by-tick.</p>
+    <form id="paperForm" class="paperForm">
+     <label>RISK %<input id="paperRisk" type="number" value="1" min="0.1" max="10" step="0.1" required></label>
+     <label>SL %<input id="paperSL" type="number" value="1" min="0.1" max="10" step="0.1" required></label>
+     <label>TP %<input id="paperTP" type="number" value="2" min="0.1" max="10" step="0.1" required></label>
+     <button name="side" value="LONG" class="paperLong" type="submit">Virtual LONG</button>
+     <button name="side" value="SHORT" class="paperShort" type="submit">Virtual SHORT</button>
+    </form>
+    <p id="paperNotice" class="muted" aria-live="polite"></p>
+    <div id="paperPositions" class="positions"></div>
+    <div class="paperFoot"><span id="paperHistory" class="muted"></span><button id="paperReset" class="subtleButton" type="button">Reset simulation</button></div>
+   </section>
+  </div>
+  <footer>DESKTOP PREVIEW v0.2 · Data market read-only · AI LLM, auto-bot Android, dan eksekusi broker asli tidak tersedia.</footer>
+ </main>
+</div>
+</div>
+<script src="./vendor/lightweight-charts.js"></script>
+<script src="../core/indicators.js"></script>
+<script src="../core/insight.js"></script>
+<script src="../core/paper.cjs"></script>
+<script src="./app.js"></script>
 </body>
 </html>
