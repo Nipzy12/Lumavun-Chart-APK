@@ -27,7 +27,7 @@ function readSaved(){
 const state=readSaved();
 let account;try{account=paper.restore(JSON.parse(localStorage.getItem(paperKey)||'null'));}catch{account=paper.createAccount();}
 let requestId=0,busy=false,lastMarket=null;
-const aiUi={configured:false,ready:false,loadedKey:null,renderedKey:null,running:false};
+const aiUi={configured:false,ready:false,loadedKey:null,renderedKey:null,running:false,visionShot:null};
 const chart=LightweightCharts.createChart(byId('chart'),{
  autoSize:true,layout:{background:{type:'solid',color:'#0e1727'},textColor:'#94a9c8',fontFamily:'Segoe UI, Arial'},
  grid:{vertLines:{color:'#18253b'},horzLines:{color:'#18253b'}},
@@ -115,7 +115,7 @@ function renderPaper(){
 async function refresh(fit=false){
  if(!core||!insights||!paper||!window.lumavun)return showError('Desktop engine tidak lengkap.');
  const id=++requestId,provider=state.provider,symbol=state.symbol,interval=state.interval;
- busy=true;lastMarket=null;aiUi.ready=false;updateAiButton();if(aiUi.renderedKey&&aiUi.renderedKey!==marketAiKey())resetAiOutput();clearError();setStatus('LOADING');byId('chartState').textContent='Mengambil candle dari provider…';
+ busy=true;lastMarket=null;aiUi.ready=false;resetVisionPreview();updateAiButton();if(aiUi.renderedKey&&aiUi.renderedKey!==marketAiKey())resetAiOutput();clearError();setStatus('LOADING');byId('chartState').textContent='Mengambil candle dari provider…';
  byId('pairTitle').textContent=displaySymbol(symbol);byId('chartLabel').textContent=provider+' · '+symbol+' · '+interval;
  renderWatchlist();
  try{
@@ -204,6 +204,28 @@ byId('paperReset').addEventListener('click',()=>{
  account=paper.createAccount();savePaper();renderPaper();byId('paperNotice').textContent='Simulasi direset.';
 });
 
+function renderAiResponse(result,key,provider,symbol,interval){
+  aiUi.renderedKey=key;
+  byId('aiResult').hidden=false;
+  byId('aiDecision').textContent=result.decision+' · '+result.bias+' · '+result.confidence+'% (klaim model)';
+  byId('aiMeta').textContent=result.model+' · '+provider+' · '+symbol+' '+interval+' · data '+result.asOfUtc+(result.visionAssisted?' · VISION':' · OHLC');
+  byId('aiSummary').textContent=result.summary;
+  byId('aiLevels').textContent=result.decision==='WAIT'?
+   'WAIT: tidak ada entry, SL, atau TP yang divalidasi.':
+   'Skenario hipotetis: Entry '+fmt(result.entry)+' | SL '+fmt(result.stopLoss)+' | TP '+result.takeProfit.map(fmt).join(', ')+' | RR '+result.riskReward;
+  const root=byId('aiReasoning');root.replaceChildren();
+  for(const reason of result.reasoning){const li=document.createElement('li');li.textContent=reason;root.append(li);}
+  if(result.invalidation){const li=document.createElement('li');li.textContent='Invalidasi: '+result.invalidation;root.append(li);}
+  byId('aiWarning').textContent=result.warning||'Periksa validitas feed dan risiko sebelum mengambil keputusan apa pun.';
+}
+
+function resetVisionPreview(){
+ aiUi.visionShot=null;
+ byId('aiPreview').hidden=true;
+ byId('aiPreviewImage').removeAttribute('src');
+ byId('aiPreviewInfo').textContent='Gambar belum diambil.';
+ updateAiButton();
+}
 function marketAiKey(){return state.provider+'|'+state.symbol+'|'+state.interval;}
 function setAiStatus(message){byId('aiStatus').textContent=String(message).slice(0,500);}
 function resetAiOutput(){
@@ -213,7 +235,11 @@ function resetAiOutput(){
  byId('aiWarning').textContent='';aiUi.renderedKey=null;
 }
 function updateAiButton(){
- byId('aiRun').disabled=!aiUi.configured||!aiUi.ready||aiUi.loadedKey!==marketAiKey()||aiUi.running;
+ const active=aiUi.configured&&aiUi.ready&&aiUi.loadedKey===marketAiKey()&&!aiUi.running;
+ byId('aiRun').disabled=!active;
+ byId('aiCapture').disabled=!active;
+ byId('aiVision').disabled=!active||!aiUi.visionShot||
+  aiUi.visionShot.key!==marketAiKey()||Date.now()-aiUi.visionShot.at>120000;
 }
 function toggleAiFields(){
  const custom=byId('aiMode').value==='CUSTOM';
@@ -222,7 +248,7 @@ function toggleAiFields(){
  byId('aiEndpoint').required=custom;
  byId('aiModel').placeholder=custom?'Nama model di provider API':'Contoh: qwen2.5:3b';
 }
-byId('aiMode').addEventListener('change',()=>{toggleAiFields();aiUi.configured=false;resetAiOutput();updateAiButton();setAiStatus('Provider berubah. Hubungkan model sebelum analisis.');});
+byId('aiMode').addEventListener('change',()=>{toggleAiFields();aiUi.configured=false;resetAiOutput();resetVisionPreview();updateAiButton();setAiStatus('Provider berubah. Hubungkan model sebelum analisis.');});
 byId('aiModel').addEventListener('input',()=>{aiUi.configured=false;updateAiButton();});
 byId('aiEndpoint').addEventListener('input',()=>{aiUi.configured=false;updateAiButton();});
 byId('aiDiscover').addEventListener('click',async()=>{
@@ -260,24 +286,53 @@ byId('aiRun').addEventListener('click',async()=>{
    setAiStatus('Grafik berubah saat model menganalisis. Hasil lama diabaikan.');
    return;
   }
-  aiUi.renderedKey=key;
-  byId('aiResult').hidden=false;
-  byId('aiDecision').textContent=result.decision+' · '+result.bias+' · '+result.confidence+'% (klaim model)';
-  byId('aiMeta').textContent=result.model+' · '+provider+' · '+symbol+' '+interval+' · data '+result.asOfUtc;
-  byId('aiSummary').textContent=result.summary;
-  byId('aiLevels').textContent=result.decision==='WAIT'?
-   'WAIT: tidak ada entry, SL, atau TP yang divalidasi.':
-   'Skenario hipotetis: Entry '+fmt(result.entry)+' | SL '+fmt(result.stopLoss)+' | TP '+result.takeProfit.map(fmt).join(', ')+' | RR '+result.riskReward;
-  const root=byId('aiReasoning');root.replaceChildren();
-  for(const reason of result.reasoning){const li=document.createElement('li');li.textContent=reason;root.append(li);}
-  if(result.invalidation){const li=document.createElement('li');li.textContent='Invalidasi: '+result.invalidation;root.append(li);}
-  byId('aiWarning').textContent=result.warning||'Periksa validitas feed dan risiko sebelum mengambil keputusan apa pun.';
+  renderAiResponse(result,key,provider,symbol,interval);
   setAiStatus('Analisis selesai menggunakan '+result.provider+' / '+result.model+'. AI tidak bisa mengirim order.');
  }catch(error){
   resetAiOutput();setAiStatus('Gagal menganalisis: '+String(error.message||error));
  }finally{aiUi.running=false;updateAiButton();}
 });
 toggleAiFields();
+
+byId('aiCapture').addEventListener('click',()=>{
+ if(!aiUi.configured||!aiUi.ready||aiUi.loadedKey!==marketAiKey())
+  return setAiStatus('Hubungkan model dan tunggu data OHLC terbaru terlebih dahulu.');
+ try{
+  const canvas=chart.takeScreenshot(true,false);
+  if(!canvas||canvas.width<200||canvas.height<180)throw Error('Ukuran chart terlalu kecil.');
+  const dataUrl=canvas.toDataURL('image/png');
+  if(!dataUrl.startsWith('data:image/png;base64,')||dataUrl.length>5_600_000)
+   throw Error('Gambar PNG terlalu besar.');
+  aiUi.visionShot={key:marketAiKey(),dataUrl,at:Date.now()};
+  byId('aiPreviewImage').src=dataUrl;
+  byId('aiPreview').hidden=false;
+  byId('aiPreviewInfo').textContent='Pratinjau '+canvas.width+' × '+canvas.height+' px · '+state.provider+' '+state.symbol+' '+state.interval+' · belum dikirim ke penyedia AI.';
+  setAiStatus('Gambar chart ditangkap secara lokal. Periksa pratinjau, lalu klik Analisis dengan Vision untuk mengirim.');
+  updateAiButton();
+ }catch(error){resetVisionPreview();setAiStatus('Gagal menangkap grafik: '+String(error.message||error));}
+});
+byId('aiVision').addEventListener('click',async()=>{
+ const shot=aiUi.visionShot,key=marketAiKey();
+ if(!shot||shot.key!==key||Date.now()-shot.at>120000||!aiUi.configured||!aiUi.ready||
+  aiUi.loadedKey!==key)return setAiStatus('Pratinjau lama/kedaluwarsa. Refresh chart dan ambil gambar baru.');
+ const {provider,symbol,interval}=state;
+ aiUi.running=true;updateAiButton();
+ setAiStatus(byId('aiMode').value==='OLLAMA'?
+  'Gambar chart sedang dianalisis Ollama lokal…':
+  'Mengirim gambar chart ke custom API yang dipilih untuk analisis Vision…');
+ try{
+  const result=await window.lumavun.analyzeVision(provider,symbol,interval,shot.dataUrl);
+  if(key!==marketAiKey()||!aiUi.ready||aiUi.loadedKey!==key||aiUi.visionShot!==shot){
+   setAiStatus('Grafik atau pratinjau berubah saat proses berjalan. Hasil lama diabaikan.');
+   return;
+  }
+  renderAiResponse(result,key,provider,symbol,interval);
+  setAiStatus('Analisis Vision selesai. Level hanya skenario hipotetis, tidak ada order yang dikirim.');
+ }catch(error){
+  resetAiOutput();
+  setAiStatus('Gagal Vision: '+String(error.message||error)+'. Pastikan model mendukung input gambar (misalnya qwen2.5vl:3b).');
+ }finally{aiUi.running=false;updateAiButton();}
+});
 
 renderWatchlist();renderTimeframes();renderPaper();refresh(true);
 setInterval(()=>{if(!busy&&!document.hidden)refresh(false);},45000);

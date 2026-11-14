@@ -124,7 +124,9 @@ ipcMain.handle('lumavun:ai:analyze',async (_event,input)=>{
  aiBusy=true;
  try{
   const snapshot=ai.createSnapshot({provider,symbol,interval,candles:cache.data});
-  const result=await ai.analyze(aiConfig,snapshot);
+  const hasImage=Object.prototype.hasOwnProperty.call(input||{},'imageDataUrl');
+  if(hasImage&&typeof input.imageDataUrl!=='string')throw Error('Vision harus menerima screenshot PNG chart.');
+  const result=await ai.analyze(aiConfig,snapshot,globalThis.fetch,hasImage?input.imageDataUrl:null);
   return {...result,symbol,interval,asOfUtc:snapshot.asOfUtc};
  }finally{aiBusy=false;}
 });

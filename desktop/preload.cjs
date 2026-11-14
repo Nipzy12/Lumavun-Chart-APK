@@ -7,5 +7,6 @@ contextBridge.exposeInMainWorld('lumavun',Object.freeze({
  symbols:(provider,query='')=>ipcRenderer.invoke('lumavun:symbols',provider,query),
  listAiModels:()=>ipcRenderer.invoke('lumavun:ai:models'),
  configureAi:(config)=>ipcRenderer.invoke('lumavun:ai:configure',config),
- analyzeAi:(provider,symbol,interval)=>ipcRenderer.invoke('lumavun:ai:analyze',{provider,symbol,interval})
+ analyzeAi:(provider,symbol,interval)=>ipcRenderer.invoke('lumavun:ai:analyze',{provider,symbol,interval}),
+ analyzeVision:(provider,symbol,interval,imageDataUrl)=>ipcRenderer.invoke('lumavun:ai:analyze',{provider,symbol,interval,imageDataUrl})
 }));

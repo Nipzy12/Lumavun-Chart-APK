@@ -53,3 +53,15 @@
 .aiWarning{color:#ffb9a7!important}
 #aiStatus{margin-top:14px;line-height:1.6}
 @media(max-width:1100px){.aiSettings,.aiRemote{grid-template-columns:1fr}}
+
+
+/* AI Vision v0.4: visual preview stays local until explicit send */
+.aiVisionPane{border-top:1px solid #344363;margin-top:20px;padding-top:18px}
+.aiVisionHeader{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;color:#d6defa;letter-spacing:.04em}
+.aiVisionPane p{font-size:11px;line-height:1.75;color:#9dafcf;max-width:860px}
+.aiVisionPane code{color:#d8c8ff;font-family:Consolas,monospace}
+.aiVisionActions{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:14px 0}
+.aiVisionActions button{padding:11px 14px}
+.aiPreview{margin:15px 0;padding:12px;background:#0a1424;border:1px solid #344a6b;border-radius:9px;max-width:930px}
+.aiPreview img{max-width:100%;display:block;border-radius:4px;background:#0e1727}
+.aiPreview figcaption{margin-top:9px;color:#91a6c4;font-size:10px;line-height:1.5}

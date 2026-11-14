@@ -10,7 +10,7 @@
 <body>
 <div class="app">
 <header class="topbar">
- <div class="brand"><span class="moon"></span><div><strong>LUMAVUN</strong><small>CHART DESKTOP · PREVIEW 0.3</small></div></div>
+ <div class="brand"><span class="moon"></span><div><strong>LUMAVUN</strong><small>CHART DESKTOP · PREVIEW 0.4</small></div></div>
  <div class="topright"><span class="eyebrow">SOURCE</span><span id="providerBadge" class="provider">BINANCE SPOT</span><span id="status" class="status">READY</span></div>
 </header>
 <div class="workspace">
@@ -119,6 +119,22 @@
   </div>
  </form>
  <p id="aiStatus" class="muted" role="status" aria-live="polite">Belum terhubung. Ollama harus terpasang dan memiliki model lokal. API key hanya disimpan selama aplikasi terbuka.</p>
+ <div class="aiVisionPane">
+  <div class="aiVisionHeader">
+    <strong>AI VISION · CHART SCREENSHOT</strong>
+    <span class="miniTag">MANUAL APPROVAL</span>
+  </div>
+  <p>Gambar diambil hanya dari kanvas grafik candle, tidak termasuk jendela lain atau isian API key. Pratinjau ditampilkan sebelum dikirim. Untuk Ollama pilih model vision seperti <code>qwen2.5vl:3b</code>; custom API harus mendukung input gambar.</p>
+  <div class="aiVisionActions">
+    <button id="aiCapture" class="subtleButton" type="button" disabled>Pratinjau gambar chart</button>
+    <button id="aiVision" class="aiPrimary" type="button" disabled>Analisis dengan Vision</button>
+  </div>
+  <figure id="aiPreview" class="aiPreview" hidden>
+    <img id="aiPreviewImage" alt="Pratinjau PNG grafik candlestick yang akan dikirim ke model" />
+    <figcaption id="aiPreviewInfo">Gambar ini hanya di memori aplikasi; belum dikirim ke penyedia AI.</figcaption>
+  </figure>
+  <p class="muted">Gambar hanya dikirim ketika tombol Analisis dengan Vision diklik. Bila menggunakan custom API, gambar beserta snapshot OHLC akan dikirim ke penyedia yang dipilih. Tidak ada screenshot yang disimpan di disk.</p>
+</div>
  <article id="aiResult" class="aiResult" hidden>
   <div class="aiResultHeader"><strong id="aiDecision">WAIT</strong><span id="aiMeta" class="muted"></span></div>
   <p id="aiSummary"></p>
@@ -128,7 +144,7 @@
   <p class="muted">Skenario hipotetis. Bukan sinyal terverifikasi, bukan eksekusi broker, dan tidak terhubung ke paper bot otomatis.</p>
  </article>
 </section>
-  <footer>DESKTOP PREVIEW v0.3 · Data market read-only · AI LLM, auto-bot Android, dan eksekusi broker asli tidak tersedia.</footer>
+  <footer>DESKTOP PREVIEW v0.4 · Data market read-only · AI Analyst & Vision on-demand, tanpa auto-bot atau eksekusi order broker.</footer>
  </main>
 </div>
 </div>
