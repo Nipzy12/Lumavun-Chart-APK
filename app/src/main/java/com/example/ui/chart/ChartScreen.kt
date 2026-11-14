@@ -39,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ai.parser.AiAnalysisResult
 import com.example.analysis.signal.ActiveTradeSetup
 import com.example.analysis.signal.ChartSignalOverlay
+import com.example.analysis.smc.SmcEntryProV5Engine
 import com.example.analysis.signal.MarketAssessmentState
 import com.example.analysis.technical.MarketTechnicalSnapshot
 import com.example.chart.chart.LightweightCandleChart
@@ -144,6 +145,17 @@ fun ChartScreen(
     modifier: Modifier = Modifier
 ) {
     var showIndicatorsDialog by remember { mutableStateOf(false) }
+    var showSmcProV5 by rememberSaveable { mutableStateOf(false) }
+    var smcProQuality by rememberSaveable { mutableStateOf("STRICT") }
+    var smcProHtfBias by rememberSaveable { mutableStateOf(true) }
+    val smcProConfig = remember(smcProQuality, smcProHtfBias, activeTimeframe) {
+        SmcEntryProV5Engine.Config(
+            qualityMode = SmcEntryProV5Engine.QualityMode.valueOf(smcProQuality),
+            htfMode = if (smcProHtfBias && activeTimeframe != Timeframe.D1)
+                SmcEntryProV5Engine.HtfMode.BIAS else SmcEntryProV5Engine.HtfMode.OFF,
+            htfTimeframe = if (activeTimeframe.durationMs >= Timeframe.H4.durationMs) Timeframe.D1 else Timeframe.H4
+        )
+    }
     var showAnalystPanel by rememberSaveable { mutableStateOf(false) }
 
     if (showIndicatorsDialog) {
@@ -162,6 +174,12 @@ fun ChartScreen(
             onToggleSmc = onToggleSmc,
             onToggleIct = onToggleIct,
             onToggleAmd = onToggleAmd,
+            showSmcProV5 = showSmcProV5,
+            onToggleSmcProV5 = { showSmcProV5 = !showSmcProV5 },
+            smcProQuality = smcProQuality,
+            onChangeSmcProQuality = { smcProQuality = it },
+            smcProHtfBias = smcProHtfBias,
+            onChangeSmcProHtfBias = { smcProHtfBias = it },
             onToggleSignalOverlay = onToggleSignalOverlay,
             onToggleSignalHistory = onToggleSignalHistory,
             onToggleTradePlanOverlay = onToggleTradePlanOverlay,
@@ -295,6 +313,8 @@ fun ChartScreen(
             showMacd = settings.showMacd,
             showSupportResistance = settings.showSupportResistance,
             showSmc = settings.showSmc,
+            showSmcProV5 = showSmcProV5,
+            smcProConfig = smcProConfig,
             showIct = settings.showIct,
             showAmd = settings.showAmd,
             snapshot = snapshot,
