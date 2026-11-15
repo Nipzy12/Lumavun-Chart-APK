@@ -15,6 +15,30 @@ async function main(){
   assert.equal(await page.locator('#pageNav button').count(),5);
   assert.equal(await page.locator('#page-ai').isVisible(),false);
   assert.equal(await page.locator('#tvWorkspace').isVisible(),true);
+  assert.equal(await page.locator('.topbar #pageNav').count(),1,'Navigation should live inside desktop titlebar.');
+  assert.equal(await page.locator('#tvRightRail button').count(),7,'Right-side tool rail should be visible.');
+  assert.equal(await page.locator('#tvDock').evaluate(el=>el.classList.contains('collapsed')),true,'Chart should take priority by default.');
+  assert.equal(await page.locator('#tvSidebarResize').count(),1);
+  assert.equal(await page.locator('#tvWatchAdd').count(),1);
+  assert.ok((await page.locator('#watchlist .tvWatchPrice').count())>=1,'Watchlist requires a price column.');
+  await page.locator('#tvSymbolOpen').click();
+  assert.equal(await page.locator('#tvSymbolDialog').evaluate(el=>el.open),true);
+  assert.ok((await page.locator('#tvSearchResults button').count())>=3,'Symbol dialog suggestions expected.');
+  await page.locator('[data-search-provider="BIQUOTE"]').click();
+  await page.locator('#tvSearchQuery').fill('XAU');
+  assert.match(await page.locator('#tvSearchResults').textContent(),/XAUUSD/);
+  await page.locator('#tvSearchClose').click();
+  assert.equal(await page.locator('#tvSymbolDialog').evaluate(el=>el.open),false);
+  await page.locator('#tvSettingsOpen').click();
+  assert.equal(await page.locator('#tvSettingsMenu').isVisible(),true);
+  await page.locator('#tvShowGrid').uncheck();
+  assert.equal(await page.evaluate(()=>chart.options().grid.vertLines.visible),false);
+  await page.locator('#tvShowGrid').check();
+  await page.locator('#tvShowWatermark').check();
+  assert.equal(await page.locator('#tvWatermark').isVisible(),true);
+  await page.locator('#tvShowWatermark').uncheck();
+  await page.locator('#tvSettingsOpen').click();
+  assert.equal(await page.locator('#tvSettingsMenu').isVisible(),false);
   assert.equal(await page.evaluate(()=>typeof window.LumaStudies?.backtest),'function');
   assert.equal(await page.locator('.tvDrawRail [data-draw]').count(),5);
   assert.equal(await page.locator('#tvChartType').count(),1);
@@ -38,6 +62,10 @@ async function main(){
   assert.equal(await page.locator('.sidebar').isVisible(),false);
   await page.locator('#tvToggleRight').click();
   assert.equal(await page.locator('.sidebar').isVisible(),true);
+  await page.locator('#tvRailAlerts').click();
+  assert.equal(await page.locator('[data-dock-pane="alerts"]').isVisible(),true);
+  await page.locator('#tvDockToggle').click();
+  assert.equal(await page.locator('#tvDock').evaluate(el=>el.classList.contains('collapsed')),true);
   await page.locator('#tvCreateAlert').click();
   assert.equal(await page.locator('[data-dock-pane="alerts"]').isVisible(),true);
   await page.locator('#tvAlertPrice').fill('99999');
@@ -46,12 +74,16 @@ async function main(){
   await page.locator('[data-dock="notes"]').click();
   await page.locator('#tvNotes').fill('Windows chart terminal notes.');
   await page.locator('[data-dock="overview"]').click();
+  await page.locator('#tvDockToggle').click();
+  assert.equal(await page.locator('#tvDock').evaluate(el=>el.classList.contains('collapsed')),true);
   assert.match(await page.title(),/LUMAVUN Chart/);
   assert.equal(await page.locator('#aiCapture').count(),1);
   assert.equal(await page.locator('#aiVision').count(),1);
   assert.equal(await page.locator('#aiPreview').isVisible(),false);
   assert.equal(await page.locator('#aiVision').isDisabled(),true);
-  await page.locator('[data-route="ai"]').click();
+  await page.locator('#tvRailAi').click();
+  assert.equal(await page.locator('.workspace').evaluate(el=>el.classList.contains('nonChart')),true);
+  assert.equal(await page.locator('.sidebar').isVisible(),false);
   await page.locator('#aiHeading').waitFor({state:'visible',timeout:15000});
   assert.equal(await page.locator('#page-chart').isVisible(),false);
   assert.ok((await page.locator('#watchlist .watchItem').count())>=1,'Watchlist should render.');
@@ -69,6 +101,7 @@ async function main(){
   await page.locator('[data-route="settings"]').click();
   assert.equal(await page.locator('#gatewayForm').isVisible(),true);
   await page.locator('[data-route="chart"]').click();
+  assert.equal(await page.locator('.workspace').evaluate(el=>el.classList.contains('nonChart')),false);
   assert.equal(await page.locator('#chart').isVisible(),true);
   // Offline CI chart fixtures are labelled. These are NOT live trading quotes.
   await page.evaluate(()=>{
@@ -87,12 +120,13 @@ async function main(){
   await page.locator('#tvBacktest').click();
   assert.ok((await page.locator('.tvBacktestMetric').count())>=5,'Strategy metrics should be rendered from test candles.');
   await page.locator('[data-dock="overview"]').click();
+  await page.locator('#tvDockToggle').click();
   fs.mkdirSync(path.join(root,'artifacts'),{recursive:true});
   await page.screenshot({path:path.join(root,'artifacts','desktop-ui-smoke.png'),fullPage:true});
   await page.locator('#marketProvider').selectOption('BIQUOTE');
   assert.match(await page.locator('#providerBadge').textContent(),/BIQUOTE/);
   if(errors.length)throw Error('UI JavaScript errors: '+errors.join('; ').slice(0,500));
-  console.log('PASS Electron UI smoke: Superview toolbar, indicators, theme, drawing tools, notes, alert, EMA tester, five-page navigation, AI and chart canvas.');
+  console.log('PASS Electron UI smoke: compact TradingView-like chrome, symbol dialog, chart settings, watchlist quotes, right utility rail, collapsible dock, studies, drawing tools, alerts, strategy and five pages.');
  }finally{if(app)await app.close();}
 }
 main().catch(error=>{console.error('FAIL desktop UI smoke:',error?.message||error);process.exitCode=1;});

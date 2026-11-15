@@ -239,3 +239,137 @@ html[data-tv-theme=light] .tvMetric strong,html[data-tv-theme=light] .tvLiveQuot
 @media(max-width:1050px){.workspace{grid-template-columns:minmax(0,1fr) 225px}.tvOhlcValues span:nth-child(1),.tvOhlcValues span:nth-child(2){display:none}.tvTextTool{font-size:10px}.tvMarketStrip{padding:4px 8px}.tvSummaryGrid{gap:5px}.tvMetric{padding:7px}}
 
 .tvAttribution{display:inline-block;margin-left:14px;color:#8491a4}.tvAttribution a{color:#93b3f8;text-decoration:none}.tvAttribution a:hover{text-decoration:underline}
+
+
+/* LUMAVUN v0.7: chart-first desktop layout based on verified Supercharts regions */
+:root{--tv-right-width:292px;--tv-dock-height:250px;--tv-bg:#131722;--tv-panel:#131722;--tv-line:#2a2e39;--tv-ink:#d1d4dc;--tv-subdued:#787d8a;--tv-hover:#272c37;--tv-blue:#2962ff;color-scheme:dark}
+.tvIconDefs{position:absolute;width:0;height:0;pointer-events:none}
+.tvIcon{width:17px;height:17px;stroke:currentColor;stroke-width:1.65;fill:none;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle;flex-shrink:0}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #2962ff;outline-offset:1px}
+.topbar{height:40px;min-height:40px;padding:0 8px 0 13px;background:#131722;display:flex;align-items:center;gap:12px}
+.brand{gap:8px;min-width:130px}.brand strong{letter-spacing:.075em;font-size:13px}.brand small{letter-spacing:.08em;font-size:8px;color:#68758a}.brand .moon{width:20px;height:20px;box-shadow:inset -5px 0 0 #c4ac80}
+.topbar .pageNav{display:flex;align-items:center;flex:1;min-width:0;gap:2px;height:40px;border:0;padding:0;background:transparent;overflow-x:auto;overflow-y:hidden}
+.topbar .navTab{height:31px;padding:5px 10px;display:flex;align-items:center;gap:6px;border:1px solid transparent;border-radius:5px;font-size:11px;font-weight:580;color:#a4abb9}
+.topbar .navTab .tvIcon{height:14px;width:14px;stroke-width:1.8}
+.topbar .navTab.active{background:#262a35;border-color:#3b4051;color:#edf0f8}
+.topbar .navTab:hover{background:#252b37;color:#e2e7f2}
+.topbar .topright{margin-left:auto;flex-shrink:0}.topbar .provider{padding:5px 8px;font-size:9px;letter-spacing:.03em}.topbar .status{padding:5px 7px;min-width:61px;font-size:9px}
+.workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(235px,var(--tv-right-width)) 42px;min-height:calc(100vh - 40px);background:#131722}
+.workspace.tvRightClosed{grid-template-columns:minmax(0,1fr) 42px}
+.workspace.tvRightClosed .sidebar{display:none}
+.workspace.tvRightClosed .tvRightRail{grid-column:2}
+.workspace.nonChart{grid-template-columns:minmax(0,1fr)}
+.workspace.nonChart .sidebar,.workspace.nonChart .tvRightRail{display:none}
+.workspace .main{grid-column:1;grid-row:1;min-width:0}
+.workspace .sidebar{grid-column:2;grid-row:1;position:relative;max-height:calc(100vh - 40px);overflow:auto;border-left:1px solid #2a2e39;min-width:0}
+#tvSidebarResize{width:6px;position:sticky;top:0;left:0;height:100%;min-height:calc(100vh - 40px);float:left;margin-left:0;margin-right:-6px;z-index:9;cursor:col-resize;background:transparent}
+#tvSidebarResize:hover,#tvSidebarResize.dragging{background:#2962ff88}
+.tvRightRail{grid-column:3;grid-row:1;border-left:1px solid #2a2e39;display:flex;flex-direction:column;align-items:center;gap:6px;background:#131722;padding:8px 4px}
+.tvRightRail button{display:grid;place-items:center;width:32px;height:33px;background:transparent;color:#969eae;border:0;border-radius:6px;padding:0}
+.tvRightRail button:hover{background:#262a36;color:#f2f4fa}
+.tvRightRail button.active{color:#7ca5fb;background:#24304b}
+.tvRightRail .tvIcon{width:19px;height:19px}
+.tvRightRailGap{flex:1}
+.tvPage{min-height:0}
+.tvWorkspace{height:calc(100vh - 59px);min-height:470px;position:relative}
+.tvTopTools{height:42px;min-height:42px;padding:0 8px;gap:5px;border-color:#2a2e39}
+.tvTopTools .tvIcon{width:15px;height:15px}
+.tvSymbolButton{min-width:105px;padding:5px 9px 5px 6px;gap:6px;font-size:11px}
+.tvSymbolButton .tvIcon:first-child{color:#9ba8c1}.tvSymbolButton .tvIcon:last-child{width:12px;height:12px;color:#7c8390}
+.tvTextTool{display:flex;align-items:center;gap:6px;padding:6px 7px;color:#b7bbc4;font-size:11px}
+.tvIconTool{display:grid;place-items:center;width:29px;height:31px;padding:0;font-size:17px}
+.tvFlatSelect{font-size:11px;padding:6px 3px}
+.tvSaveTool{display:flex;gap:6px;align-items:center;justify-content:center;font-size:11px;height:28px;padding:5px 11px;background:#2962ff}
+.tvFrames button{font-size:10px;padding:7px 6px}
+.tvChartColumns{grid-template-columns:39px minmax(0,1fr)}
+.tvDrawRail{padding:9px 3px;gap:5px}
+.tvDrawButton{width:32px;height:32px;border-radius:5px}
+.tvDrawButton .tvIcon{width:20px;height:20px;stroke-width:1.7}
+.tvDrawButton.active{color:#83aaf7;background:#23324c}
+.tvMarketStrip{height:38px;min-height:38px;border:none;position:absolute;z-index:3;top:0;left:42px;right:7px;display:flex;align-items:center;padding:1px 10px;gap:10px;background:transparent;pointer-events:none}
+.tvMarketStrip #tvFavorite{pointer-events:auto}
+.tvMarketSymbol{min-width:auto;gap:7px}
+.tvMarketIcon{width:23px;height:23px;font-size:12px;background:#283757}
+.tvMarketSymbol h1{font-size:11px!important;font-weight:750;line-height:1.2;color:#d4d9e4}
+.tvMarketSymbol #chartLabel{font-size:9px}
+.tvOhlcValues{font-size:10px;gap:8px}
+.tvLiveQuote #lastPrice{font-size:12px}
+.tvLiveQuote #priceChange{font-size:10px}
+.tvChartCard{min-height:260px;flex:1}
+.tvChartAbove{position:absolute;z-index:2;right:14px;top:40px;left:10px;pointer-events:none;height:20px;background:transparent;justify-content:space-between}
+.tvChartAbove #chartState{font-size:9px}
+.tvChartAbove #tvDrawHint{font-size:9px}
+.tvChartCard .chart{width:100%;height:100%!important;min-height:0}
+.tvChartSurface{position:relative;flex:1;min-height:0}
+.tvChartRange{height:27px;min-height:27px;padding:0 7px}
+.tvRangeMeta{font-size:9px;gap:9px}
+.tvWatermark{position:absolute;z-index:1;pointer-events:none;left:50%;top:45%;transform:translate(-50%,-50%);font-weight:800;font-size:clamp(32px,6vw,80px);letter-spacing:.02em;color:#e3e8f7;opacity:.06;white-space:nowrap;text-align:center}
+.tvWatermark small{display:block;font-size:14px;letter-spacing:.1em}
+.tvDockHandle{height:4px;min-height:4px;cursor:row-resize;background:#1e222d;border-top:1px solid #2a2e39}
+.tvDockHandle:hover,.tvDockHandle.dragging{background:#425a85}
+.tvDock{flex:0 0 var(--tv-dock-height);min-height:0}
+.tvDock.collapsed{flex:0 0 34px}
+.tvDock.collapsed .tvDockPane{display:none!important}
+.tvDockTabs{min-height:34px;height:34px;padding:0 4px;overflow:hidden}
+.tvDockTabs button{padding:8px 11px;font-size:10px;border-bottom-width:2px}
+.tvDockTabs button.active{border-color:#2962ff}
+.tvDockTabFlex{flex:1}
+#tvDockToggle{padding:4px 7px;display:grid;place-items:center;height:29px}
+#tvDockToggle .tvIcon{width:15px;height:15px;transition:transform .15s}
+.tvDock.collapsed #tvDockToggle .tvIcon{transform:rotate(180deg)}
+.tvDockPane{padding:10px 12px}
+.tvWatchHead{height:42px;padding:8px 11px}
+.tvWatchHead strong{font-size:12px}
+.tvWatchHead .tvIcon{width:15px;height:15px}
+.tvWlControls{gap:4px}
+.tvWlControls #watchCount{font-size:8px}
+.tvWlControls button{width:24px;height:27px;border-radius:4px;display:grid;place-items:center;font-size:16px}
+.tvWlControls button:hover{background:#282d3a}
+.tvWatchColumns{display:grid;grid-template-columns:minmax(0,1fr) 69px 52px;padding:6px 10px;border-bottom:1px solid #2a2e39;gap:4px;font-size:9px}
+.tvWatchColumns span:not(:first-child){text-align:right}
+.sidebar .minorLabel{padding-top:8px}
+.sidebar #marketProvider{padding:7px 8px}
+.sidebar .searchForm{margin-bottom:9px}
+.sidebar .watchlist{padding:0}
+.sidebar .watchItem{display:grid;grid-template-columns:minmax(0,1fr) 70px 53px 13px;align-items:center;gap:1px;min-height:41px;border-left:2px solid transparent;padding:2px 4px 2px 9px}
+.sidebar .watchItem.active{background:#20293b;border-left-color:#2962ff}
+.sidebar .watchItem .pairButton{padding:3px 2px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px;line-height:1.2;display:flex;flex-direction:column;align-items:flex-start}
+.sidebar .watchItem .pairButton small{font-size:8px;line-height:1.1}
+.tvWatchPrice,.tvWatchChange{font-size:10px;color:#c3c8d2;text-align:right;font-variant-numeric:tabular-nums;min-width:0;white-space:nowrap;overflow:hidden}
+.tvWatchChange.positive{color:#26a69a}.tvWatchChange.negative{color:#ef5350}
+.sidebar .watchItem .remove{width:13px;min-width:13px;height:21px;padding:0;font-size:12px;opacity:.28}
+.sidebar .watchItem:hover .remove{opacity:1}
+.tvSideQuote{padding:10px;margin-top:10px}
+.tvSideQuote .tvSideTitle{font-size:10px}
+.tvSideQuote dl{margin:8px 0}
+.tvPopover{top:42px;left:120px;z-index:14}
+#tvCompareMenu{left:280px}
+.tvSettingsPopover{right:16px;left:auto;width:315px;max-width:90vw}
+.tvSettingsPopover label{justify-content:space-between}
+.tvSettingsPopover .tvSettingSelect{background:#181e28;color:#e1e7f2;border:1px solid #353e4e;padding:6px;border-radius:4px}
+.tvColorRow{display:flex;gap:18px;align-items:center}
+.tvColorRow label{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.tvColorRow input{background:none;border:0;width:45px;height:26px}
+.tvSettingsReset{background:#292f3c;border:1px solid #4b5261;color:#d3d8e3;padding:8px;border-radius:5px}
+.tvSymbolDialog{background:#1d222d;border:1px solid #444955;border-radius:9px;padding:0;color:#d1d4dc;width:min(570px,90vw);max-height:78vh;box-shadow:0 22px 70px #000b;font-family:Inter,"Segoe UI",Arial,sans-serif}
+.tvSymbolDialog::backdrop{background:#05070bc2}
+.tvSearchHeader{display:flex;align-items:center;justify-content:space-between;padding:15px 19px;border-bottom:1px solid #343946}
+.tvSearchHeader strong{display:flex;align-items:center;gap:9px;font-size:15px}
+.tvSearchHeader button{display:grid;place-items:center;background:none;color:#a4aebe;border:0;border-radius:5px;width:28px;height:28px}
+.tvSearchHeader button:hover{background:#353c4c}
+.tvSearchForm{display:flex;align-items:center;gap:8px;border:1px solid #444b5b;background:#131722;border-radius:6px;margin:14px 18px 9px;padding:8px 11px}
+.tvSearchForm input{background:transparent;border:none;outline:0;color:#e4e8f2;font-size:12px;flex:1;min-width:0}
+.tvSearchForm button{background:#2962ff;color:white;border:0;border-radius:5px;padding:8px 12px;font-size:11px;font-weight:700;white-space:nowrap}
+.tvSearchFilters{display:flex;gap:5px;padding:3px 17px 10px;border-bottom:1px solid #343946}
+.tvSearchFilters button{border:0;background:transparent;color:#939cab;padding:7px 10px;border-radius:5px;font-size:11px}
+.tvSearchFilters button.active{background:#2b3b5b;color:#93b7ff}
+.tvSearchResultsHeading{display:flex;justify-content:space-between;font-size:9px;letter-spacing:.04em;color:#7d8696;padding:12px 22px}
+.tvSearchResults{min-height:120px;max-height:300px;overflow:auto}
+.tvSearchResults button{background:transparent;border:0;border-bottom:1px solid #2b303b;width:100%;display:flex;align-items:center;justify-content:space-between;padding:11px 22px;color:#d6dce5;text-align:left}
+.tvSearchResults button:hover{background:#2b3446}
+.tvSearchResults button strong{display:block;font-size:12px}.tvSearchResults button small{font-size:10px;color:#7a869b}
+.tvSearchFoot{display:flex;justify-content:space-between;gap:8px;padding:12px 18px;color:#8490a4;font-size:9px;border-top:1px solid #353d4c}
+.main>footer{background:#131722;padding:3px 10px;font-size:8px;height:19px;line-height:13px;white-space:nowrap;overflow:hidden}
+.main>.routePage:not(.tvPage){max-height:calc(100vh - 40px);overflow-y:auto}
+@media(max-width:1170px){.topbar .pageNav{gap:0}.topbar .navTab{font-size:10px;padding:5px 7px}.topbar .navTab .tvIcon{width:13px;height:13px}.workspace{grid-template-columns:minmax(0,1fr) minmax(220px,var(--tv-right-width)) 38px}.tvTopTools{gap:2px}.tvTopTools .tvTextTool{font-size:10px;padding:6px 4px}.tvMarketStrip{gap:6px}.tvOhlcValues span:nth-child(1),.tvOhlcValues span:nth-child(2){display:none}}
+@media(max-width:1010px){.topbar .provider{display:none}.brand{min-width:110px}.topbar .navTab{padding:5px 6px}.tvFrames button{padding:6px 5px}.tvTextTool{max-width:90px;overflow:hidden}.tvSaveTool{padding:5px 7px}.tvChartRange{padding:0 5px}.tvRangeMeta #lastUpdate{display:none}.sidebar .watchItem{grid-template-columns:minmax(0,1fr) 62px 48px 12px;gap:0}}

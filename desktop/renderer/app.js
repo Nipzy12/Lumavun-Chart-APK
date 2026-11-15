@@ -52,6 +52,34 @@ function setStatus(label,kind=''){const el=byId('status');el.textContent=label;e
 function showError(error){const e=byId('error');e.hidden=false;e.textContent=String(error).slice(0,330);setStatus('ERROR','warn');byId('chartState').textContent='Data tidak tersedia';}
 function clearError(){const e=byId('error');e.hidden=true;e.textContent='';}
 function displaySymbol(symbol){if(symbol.endsWith('USDT'))return symbol.slice(0,-4)+' / USDT';if(symbol.length===6)return symbol.slice(0,3)+' / '+symbol.slice(3);return symbol;}
+const watchQuotes=new Map();
+let watchUpdateBusy=false;
+function rememberQuote(provider,symbol,q){
+ const last=Number(q?.lastPrice),change=Number(q?.priceChangePercent);
+ if(!Number.isFinite(last)||last<=0)return;
+ watchQuotes.set(provider+':'+symbol,{last,change:Number.isFinite(change)?change:null,at:Date.now()});
+}
+async function refreshWatchlistPrices(){
+ if(watchUpdateBusy||currentPage!=='chart')return;
+ watchUpdateBusy=true;
+ try{
+  const items=state.watchlist.slice(0,12).filter(item=>{
+   const cached=watchQuotes.get(key(item));
+   return !cached||Date.now()-cached.at>120000;
+  });
+  for(let i=0;i<items.length;i+=3){
+   await Promise.allSettled(items.slice(i,i+3).map(async item=>{
+    try{
+     const q=await window.lumavun.ticker(item.provider,item.symbol);
+     rememberQuote(item.provider,item.symbol,q);
+    }catch{
+     watchQuotes.set(key(item),{last:null,change:null,at:Date.now()});
+    }
+   }));
+   renderWatchlist();
+  }
+ }finally{watchUpdateBusy=false;}
+}
 function renderWatchlist(){
  const root=byId('watchlist');root.replaceChildren();byId('watchCount').textContent=state.watchlist.length+' PAIRS';
  byId('marketProvider').value=state.provider;
@@ -68,7 +96,14 @@ function renderWatchlist(){
    if(state.provider===item.provider&&state.symbol===item.symbol){state.provider=state.watchlist[0].provider;state.symbol=state.watchlist[0].symbol;}
    save();renderWatchlist();refresh(true);
   });
-  row.append(pair,remove);root.append(row);
+  const q=watchQuotes.get(key(item));
+  const price=document.createElement('span');price.className='tvWatchPrice';
+  price.textContent=q?.last>0?fmt(q.last):'—';
+  const delta=document.createElement('span');delta.className='tvWatchChange';
+  delta.textContent=Number.isFinite(q?.change)?(q.change>0?'+':'')+q.change.toFixed(2)+'%':'—';
+  if(q?.change>0)delta.classList.add('positive');
+  else if(q?.change<0)delta.classList.add('negative');
+  row.append(pair,price,delta,remove);root.append(row);
  }
 }
 function renderTimeframes(){document.querySelectorAll('#timeframes button').forEach(b=>b.classList.toggle('active',b.dataset.interval===state.interval));}
@@ -121,6 +156,7 @@ async function refresh(fit=false){
  try{
   const [data,quote]=await Promise.all([window.lumavun.candles(provider,symbol,interval,300),window.lumavun.ticker(provider,symbol)]);
   if(id!==requestId)return;
+  rememberQuote(provider,symbol,quote);
   if(!Array.isArray(data)||data.length<30)throw new Error('Kurang dari 30 candle valid dari '+provider+'.');
   candleSeries.setData(data.map(c=>({time:c.time,open:c.open,high:c.high,low:c.low,close:c.close})));
   const closes=data.map(c=>c.close),ema20=core.ema(closes,20),ema50=core.ema(closes,50);
@@ -150,6 +186,8 @@ async function refresh(fit=false){
    renderPaper();
   }
   setStatus('ONLINE','online');
+  renderWatchlist();
+  refreshWatchlistPrices().catch(()=>{});
  }catch(e){if(id===requestId){lastMarket=null;if(window.LumaWorkspace)window.LumaWorkspace.onMarketError();aiUi.ready=false;aiUi.loadedKey=null;updateAiButton();resetAiOutput();clearData();showError(e.message||'Provider gagal memuat data.');}}
  finally{if(id===requestId)busy=false;}
 }
@@ -345,6 +383,7 @@ let currentPage='chart';
 function showPage(page) {
  if(!ROUTES.has(page))return;
  currentPage=page;
+ document.querySelector('.workspace').classList.toggle('nonChart',page!=='chart');
  for(const route of ROUTES) {
   const node=byId('page-'+route);
   node.hidden=route!==page;
@@ -355,10 +394,13 @@ function showPage(page) {
   if(selected)button.setAttribute('aria-current','page');
   else button.removeAttribute('aria-current');
  });
- if(page==='chart')requestAnimationFrame(()=>{
+ if(page==='chart'){
+  refreshWatchlistPrices().catch(()=>{});
+  requestAnimationFrame(()=>{
   const rect=byId('chart').getBoundingClientRect();
   if(rect.width>=200&&rect.height>=180)chart.resize(Math.round(rect.width),Math.round(rect.height));
  });
+ }
  if(page==='models')refreshLocalAiStatus();
 }
 document.querySelectorAll('#pageNav .navTab').forEach(button=>{
@@ -495,3 +537,4 @@ if(window.lumavun&&typeof window.lumavun.onLocalAiEvent==='function'){
  });
 }
 showPage('chart');
+setInterval(()=>refreshWatchlistPrices().catch(()=>{}),120000);

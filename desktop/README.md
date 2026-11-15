@@ -1,4 +1,4 @@
-# LUMAVUN Chart Desktop: Windows Preview v0.6
+# LUMAVUN Chart Desktop: Windows Preview v0.7
 
 This is a standalone Electron app **ported from the LUMAVUN Chart Android codebase** (Kotlin + Jetpack Compose). It is not a binary APK-to-EXE converter, and **not yet at feature parity** with Android.
 
@@ -102,7 +102,7 @@ Existing API keys remain in main-process memory, and neither AI inference nor mo
 GitHub Actions runs unit tests for the installer, Windows Electron multipage UI smoke tests, and NSIS/portable EXE packaging. Live runtime installation and model downloads must still be validated manually on an actual Windows device; mock tests never install programs during CI.
 
 
-## SUPERVIEW v0.6: Professional multi-panel chart workspace
+## SUPERVIEW v0.7: Professional multi-panel chart workspace
 
 The Chart page has been rebuilt as an original **TradingView-inspired** desktop terminal, preserving LUMAVUN's name and independent code. It is not a reproduction of TradingView branding or the proprietary Supercharts platform. A 1:1 implementation of all TradingView features, broker links, licensed data feeds, and Pine execution is not available in this release.
 
@@ -124,3 +124,22 @@ This initial chart workspace uses data providers already implemented in the repo
 ### Library attribution
 
 LUMAVUN Superview is independent software. Charts use the open-source Lightweight Charts™ library, with required attribution to TradingView. The desktop package includes `NOTICE` and the app footer links to https://www.tradingview.com/. TradingView names and product branding do not represent an endorsement of LUMAVUN.
+
+
+## v0.7 TradingView-like interface refinement
+
+This is a visual and interaction pass targeting actual Supercharts spatial structure, using official UI anatomy references: https://www.tradingview.com/support/solutions/43000746464-getting-started-with-supercharts/. The result is original LUMAVUN UI rather than a copied TradingView product.
+
+- Chart is now dominant. The collapsible bottom dock starts closed, taking only a 34px tab row. When opened, it can be resized by dragging its separator.
+- Compact 40px top title bar with five LUMAVUN pages inside, rather than a tall separate nav row.
+- Original thin-stroke SVG icon set for top and left toolbars. A 42px right utility rail provides working links to watchlist, alerts, drawings, AI, paper trading, local models, and application settings.
+- Real symbol search dialog (Ctrl+K), with provider tabs, stored-watchlist/common-symbol suggestions, and verified quote lookup before changing the active symbol. Suggestions have **no fabricated quote prices**.
+- Right watchlist shows Last and Chg% columns populated from **actual verified provider quotes** (up to the first 12 rows, rate-limited to a 2-minute cache), and stays blank/dash when data cannot be read. Drag its left separator to resize (235-480px).
+- Chart appearance popover: grid visibility, symbol watermark, normal/log right scale, UTC/device clock label, real candle color controls, reset settings.
+- Smaller transparent OHLC overlay in the top corner of the chart, more uniform spacing, true central candle area, right-side watchlist, and compact chart status bar.
+- Dock tabs and right rail open real local tool panes. Controls preserve watchlist/dock widths, dock open/collapsed state, indicators, drawings, and appearance preferences in local application storage.
+- Chart screenshot export, AI Vision, offline Ollama management, paper trading and Exness gateway still exist on their own pages.
+
+Functional scope limitations remain: Lightweight Charts is a lower-level charting library; unlike TradingView's licensed Advanced Charts it does **not** ship a Pine Script interpreter, built-in advanced drawing toolbox, broker order tools, library of proprietary indicators, continuous historical replay, social features or cloud syncing. UI similarity does not imply such features exist. Model and broker connections are only validated at runtime when available, with no fake data.
+
+The GitHub Actions Electron smoke test checks actual layout elements, modal symbol search, settings, dock, model and paper pages, and exports a screenshot with explicitly labelled synthetic chart fixtures. No broker orders are placed.
