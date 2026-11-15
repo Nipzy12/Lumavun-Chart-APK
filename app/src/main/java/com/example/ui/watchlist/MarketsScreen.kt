@@ -906,14 +906,36 @@ fun MarketsScreen(
                         }
                     }
                 } else {
+                    val groupedWatchlist = remember(filteredWatchlist) {
+                        filteredWatchlist.withIndex().groupBy { indexed ->
+                            val item = indexed.value
+                            if (item.category.isNotBlank()) InstrumentCategory.fromCode(item.category)
+                            else inferInstrumentCategory(item.symbol)
+                        }
+                    }
                     LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(bottom = 24.dp),
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .testTag("watchlist_lazy_column")
+                        verticalArrangement = Arrangement.spacedBy(0.dp),
+                        contentPadding = PaddingValues(bottom = 28.dp),
+                        modifier = Modifier.fillMaxSize().testTag("watchlist_lazy_column")
                     ) {
-                        itemsIndexed(filteredWatchlist, key = { _, item -> item.symbol }) { index, item ->
+                        groupedWatchlist.forEach { (group, entries) ->
+                            item(key = "group_${group.name}") {
+                                WatchlistCategoryHeader(
+                                    category = group,
+                                    count = entries.size,
+                                    expanded = group !in collapsedWatchlistGroups,
+                                    onClick = {
+                                        collapsedWatchlistGroups =
+                                            if (group in collapsedWatchlistGroups)
+                                                collapsedWatchlistGroups - group
+                                            else collapsedWatchlistGroups + group
+                                    }
+                                )
+                            }
+                            if (group !in collapsedWatchlistGroups) {
+                                items(entries, key = { it.value.symbol }) { indexed ->
+                                    val index = indexed.index
+                                    val item = indexed.value
                             val live = liveTickers[item.symbol]
                             val price = if (live != null && live.lastPrice > 0.0) live.lastPrice else item.lastPrice
                             val changePct = live?.priceChangePercent ?: item.priceChangePercent
@@ -988,6 +1010,8 @@ fun MarketsScreen(
                                 },
                                 onRemove = { handleDeleteWithUndo(item.symbol) }
                             )
+                                }
+                            }
                         }
                     }
                 }
@@ -1942,6 +1966,54 @@ private fun CalendarMetricCol(
             overflow = TextOverflow.Ellipsis
         )
     }
+}
+
+@Composable
+private fun WatchlistCategoryHeader(
+    category: InstrumentCategory,
+    count: Int,
+    expanded: Boolean,
+    onClick: () -> Unit
+) {
+    val title = when (category) {
+        InstrumentCategory.CRYPTO -> "Kripto"
+        InstrumentCategory.FOREX -> "Forex"
+        InstrumentCategory.COMMODITIES -> "Komoditas & Logam"
+        InstrumentCategory.STOCKS -> "Saham"
+        InstrumentCategory.INDICES -> "Indeks"
+        InstrumentCategory.ALL -> "Pasar"
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(start = 8.dp, end = 10.dp, top = 13.dp, bottom = 8.dp)
+            .testTag("watchlist_group_${category.name.lowercase()}"),
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+            contentDescription = if (expanded) "Ciutkan $title" else "Buka $title",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(16.dp)
+        )
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = count.toString(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+    HorizontalDivider(
+        thickness = 0.5.dp,
+        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.20f)
+    )
 }
 
 @Composable
