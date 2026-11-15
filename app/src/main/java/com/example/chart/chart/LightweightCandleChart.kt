@@ -25,6 +25,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material.icons.filled.ZoomOut
+import androidx.compose.material3.Icon
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -43,7 +52,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -326,6 +337,7 @@ fun LightweightCandleChart(
     modifier: Modifier = Modifier
 ) {
     var engineMode by remember { mutableStateOf(ChartEngineMode.NATIVE_LIGHTWEIGHT) }
+    var showIndicatorLegend by remember { mutableStateOf(false) }
 
     val marketStructure = remember(candles.size, candles.firstOrNull()?.openTime, candles.lastOrNull()?.openTime, snapshot) {
         snapshot?.marketStructure ?: if (candles.isNotEmpty()) MarketStructureEngine.analyze(candles) else null
@@ -426,10 +438,10 @@ fun LightweightCandleChart(
         resistanceLevels.sortedBy { abs(it - currentPrice) }.mapIndexed { idx, price -> price to "R${idx + 1}" }
     }
 
-    val surfaceColor = if (darkMode) Color(0xFF0A0E17) else Color(0xFFFFFFFF)
-    val toolbarBgColor = if (darkMode) Color(0xFF0F1624) else Color(0xFFF1F5F9)
-    val gridColor = if (darkMode) Color(0xFF162032) else Color(0xFFE2E8F0)
-    val axisTextColor = if (darkMode) Color(0xFF8B9BB4) else Color(0xFF475569)
+    val surfaceColor = if (darkMode) Color(0xFF091020) else Color(0xFFFFFFFF)
+    val toolbarBgColor = if (darkMode) Color(0xFF111B30) else Color(0xFFF1F5F9)
+    val gridColor = if (darkMode) Color(0xFF223047) else Color(0xFFE2E8F0)
+    val axisTextColor = if (darkMode) Color(0xFFA0AFC7) else Color(0xFF475569)
 
     fun switchToLiveMode() {
         isLiveMode = true
@@ -454,9 +466,22 @@ fun LightweightCandleChart(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .clip(RoundedCornerShape(8.dp))
-            .background(surfaceColor)
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                Brush.verticalGradient(
+                    if (darkMode) listOf(
+                        Color(0xFF152740),
+                        surfaceColor,
+                        Color(0xFF0B1324)
+                    ) else listOf(Color(0xFFFFFFFF), Color(0xFFF6FAFE))
+                )
+            )
+            .border(
+                1.dp,
+                if (darkMode) CyanAccent.copy(alpha = 0.25f)
+                else MaterialTheme.colorScheme.outline.copy(alpha = 0.32f),
+                RoundedCornerShape(16.dp)
+            )
             .testTag("candlestick_chart_container")
     ) {
         val mainChartWeight = when {
@@ -614,6 +639,7 @@ fun LightweightCandleChart(
                     drawMainCandlestickChart(
                         candles = candles,
                         indicators = indicators,
+                        timeframeKey = timeframeKey,
                         startIndex = startIndex,
                         endIndexExclusive = endIndexExclusive,
                         totalSlotsInViewport = totalSlotsInViewport,
@@ -639,6 +665,7 @@ fun LightweightCandleChart(
                         showVolume = showVolume,
                         gridColor = gridColor,
                         axisTextColor = axisTextColor,
+                        timeAxisBgColor = if (darkMode) Color(0xF00B1426) else Color(0xF5F8FAFC),
                         textMeasurer = textMeasurer,
                         labelMeasurer = labelMeasurer,
                         priceScale = priceScale,
@@ -647,14 +674,26 @@ fun LightweightCandleChart(
                 }
             }
 
-            // Top-Left Overlay Stack: Indicator Legends (EMA, SMA, BB, ATR) + Compact Signal Overlay Summary
+            // Keep the price action visible; optional indicator values expand on demand.
             Column(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(start = 8.dp, top = 6.dp, end = 72.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                if (activeIdx in candles.indices && inspectedIdx == null) {
+                if (!showIndicatorLegend && inspectedIdx == null && candles.isNotEmpty()) {
+                    Text(
+                        text = "$symbol  ·  ${timeframeKey.uppercase(Locale.US)}  ·  LUMAVUN",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                        color = axisTextColor.copy(alpha = 0.80f),
+                        modifier = Modifier
+                            .background(surfaceColor.copy(alpha = 0.78f), RoundedCornerShape(5.dp))
+                            .padding(horizontal = 7.dp, vertical = 4.dp)
+                            .testTag("chart_minimal_legend"),
+                        maxLines = 1
+                    )
+                }
+                if (showIndicatorLegend && activeIdx in candles.indices && inspectedIdx == null) {
                     val params = indicators.params
                     val eFast = indicators.chartEma1.getOrNull(activeIdx)
                     val eMid = indicators.chartEma2.getOrNull(activeIdx)
@@ -956,57 +995,93 @@ fun LightweightCandleChart(
             }
         }
 
-        // 4. Docked Chart Toolbar at Bottom of Chart Container
+        // Compact TradingView-inspired toolbar: touch targets stay large on 360dp screens.
         HorizontalDivider(color = gridColor, thickness = 1.dp)
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(40.dp)
-                .background(toolbarBgColor)
-                .padding(horizontal = 6.dp),
+            modifier = Modifier.fillMaxWidth().height(48.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            toolbarBgColor,
+                            if (darkMode) Color(0xFF17253B) else Color(0xFFF5F8FC),
+                            toolbarBgColor
+                        )
+                    )
+                )
+                .padding(horizontal = 7.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 DockedToolbarButton(
-                    text = "[ + ]",
+                    icon = Icons.Default.ZoomIn,
+                    label = "Zoom in",
                     tag = "chart_zoom_in_button",
                     onClick = { zoomByFactor(0.8f) }
                 )
                 DockedToolbarButton(
-                    text = "[ − ]",
+                    icon = Icons.Default.ZoomOut,
+                    label = "Zoom out",
                     tag = "chart_zoom_out_button",
                     onClick = { zoomByFactor(1.25f) }
                 )
                 DockedToolbarButton(
-                    text = "[ ↻ ]",
+                    icon = Icons.Default.Refresh,
+                    label = "Reset chart",
                     tag = "chart_reset_button",
                     onClick = { resetChartZoomAndGoLive() }
                 )
                 DockedToolbarButton(
-                    text = "[ fx ]",
+                    icon = Icons.Default.Layers,
+                    label = if (showIndicatorLegend) "Hide chart labels" else "Show chart labels",
+                    tag = "chart_legend_toggle_button",
+                    isHighlighted = showIndicatorLegend,
+                    onClick = { showIndicatorLegend = !showIndicatorLegend }
+                )
+                DockedToolbarButton(
+                    icon = Icons.Default.Tune,
+                    label = "Indicators",
                     tag = "chart_toolbar_indicators_button",
-                    isHighlighted = showEma || showSma || showBollingerBands || showVolume || showRsi || showMacd || showAtr || showSupportResistance || showSmc || showIct || showAmd,
+                    isHighlighted = showEma || showSma || showBollingerBands ||
+                        showVolume || showRsi || showMacd || showAtr || showSmc ||
+                        showIct || showAmd || showSupportResistance,
                     onClick = onOpenIndicatorsDialog
                 )
                 DockedToolbarButton(
-                    text = if (isFullscreen) "[ ✕ ]" else "[ ⛶ ]",
+                    icon = if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                    label = if (isFullscreen) "Exit full screen" else "Full screen",
                     tag = "chart_fullscreen_button",
                     isHighlighted = isFullscreen,
                     onClick = onToggleFullscreen
                 )
             }
 
-            DockedToolbarButton(
-                text = if (isLiveMode) "[ LIVE ]" else "[ ↗ LIVE ]",
-                tag = "chart_go_to_live_button",
-                isHighlighted = true,
-                highlightColor = if (isLiveMode) BullishGreen else NeutralAmber,
-                onClick = { switchToLiveMode() }
-            )
+            Surface(
+                color = if (isLiveMode) BullishGreen.copy(alpha = 0.12f)
+                    else NeutralAmber.copy(alpha = 0.12f),
+                shape = RoundedCornerShape(9.dp),
+                modifier = Modifier
+                    .border(
+                        1.dp,
+                        if (isLiveMode) BullishGreen.copy(alpha = 0.5f)
+                        else NeutralAmber.copy(alpha = 0.5f),
+                        RoundedCornerShape(9.dp)
+                    )
+                    .clickable { switchToLiveMode() }
+                    .testTag("chart_go_to_live_button")
+            ) {
+                Text(
+                    text = if (isLiveMode) "● LIVE" else "GO LIVE",
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                    color = if (isLiveMode) BullishGreen else NeutralAmber,
+                    fontWeight = FontWeight.ExtraBold,
+                    maxLines = 1,
+                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 9.dp)
+                )
+            }
         }
     }
 }
@@ -1199,35 +1274,31 @@ private fun CompactJournalOverlayBadge(
 
 @Composable
 private fun DockedToolbarButton(
-    text: String,
+    icon: ImageVector,
+    label: String,
     tag: String,
     isHighlighted: Boolean = false,
-    highlightColor: Color = CyanAccent,
     onClick: () -> Unit
 ) {
-    val bg = if (isHighlighted) {
-        highlightColor.copy(alpha = 0.16f)
-    } else {
-        Color.Transparent
-    }
-    val textCol = if (isHighlighted) highlightColor else MaterialTheme.colorScheme.onSurface
+    val shape = RoundedCornerShape(9.dp)
     Box(
-        contentAlignment = Alignment.Center,
         modifier = Modifier
-            .defaultMinSize(minWidth = 40.dp, minHeight = 34.dp)
-            .clip(RoundedCornerShape(5.dp))
-            .background(bg)
+            .defaultMinSize(minWidth = 35.dp, minHeight = 38.dp)
+            .clip(shape)
+            .background(if (isHighlighted) CyanAccent.copy(alpha = 0.15f) else Color.Transparent)
+            .then(
+                if (isHighlighted) Modifier.border(1.dp, CyanAccent.copy(alpha = 0.38f), shape)
+                else Modifier
+            )
             .clickable(onClick = onClick)
-            .padding(horizontal = 6.dp, vertical = 4.dp)
-            .testTag(tag)
+            .testTag(tag),
+        contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelMedium,
-            color = textCol,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            softWrap = false
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            modifier = Modifier.padding(8.dp),
+            tint = if (isHighlighted) CyanAccent else MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -1320,6 +1391,7 @@ private fun findCandleIndexByOpenTime(candles: List<Candle>, openTime: Long): In
 private fun DrawScope.drawMainCandlestickChart(
     candles: List<Candle>,
     indicators: IndicatorSeries,
+    timeframeKey: String,
     startIndex: Int,
     endIndexExclusive: Int,
     totalSlotsInViewport: Int,
@@ -1345,6 +1417,7 @@ private fun DrawScope.drawMainCandlestickChart(
     showVolume: Boolean,
     gridColor: Color,
     axisTextColor: Color,
+    timeAxisBgColor: Color,
     textMeasurer: TextMeasurer,
     labelMeasurer: ChartLabelMeasurer,
     priceScale: Float = 1f,
@@ -1905,6 +1978,49 @@ private fun DrawScope.drawMainCandlestickChart(
             maxLines = 1
         )
     }
+    // Visible candle timestamps in a subtle bottom rail, without requiring a WebView.
+    val timeBandHeight = 19.dp.toPx()
+    val timeBandTop = (totalHeight - timeBandHeight).coerceAtLeast(0f)
+    drawRect(
+        color = timeAxisBgColor,
+        topLeft = Offset(0f, timeBandTop),
+        size = Size(plotWidth, timeBandHeight)
+    )
+    drawLine(
+        color = gridColor,
+        start = Offset(0f, timeBandTop),
+        end = Offset(plotWidth, timeBandTop),
+        strokeWidth = 1f
+    )
+    val timeFormatter = SimpleDateFormat(
+        if (timeframeKey.endsWith("d", ignoreCase = true)) "dd MMM" else "HH:mm",
+        Locale.US
+    )
+    val timeLabelStyle = TextStyle(
+        fontFamily = JetBrainsMonoFontFamily,
+        fontSize = 9.sp,
+        color = axisTextColor,
+        fontFeatureSettings = "tnum"
+    )
+    for (tick in 0..3) {
+        val slot = ((totalSlotsInViewport - 1) * tick / 3f).roundToInt()
+        val index = startIndex + slot
+        if (index in startIndex until endIndexExclusive) {
+            val label = timeFormatter.format(Date(candles[index].openTime))
+            val measured = labelMeasurer.measure(label, timeLabelStyle)
+            val posX = ((slot + 0.5f) * (plotWidth / totalSlotsInViewport) -
+                measured.size.width / 2f).coerceIn(
+                3f, (plotWidth - measured.size.width - 3f).coerceAtLeast(3f)
+            )
+            drawText(
+                textMeasurer = textMeasurer,
+                text = label,
+                style = timeLabelStyle,
+                topLeft = Offset(posX, timeBandTop + 3.dp.toPx())
+            )
+        }
+    }
+
 }
 
 /**
