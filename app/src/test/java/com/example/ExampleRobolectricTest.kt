@@ -189,7 +189,7 @@ class ExampleRobolectricTest {
 
     @Test
     @Config(sdk = [36], qualifiers = "w360dp-h740dp-xhdpi")
-    fun `watchlist layout on narrow 360dp screen renders horizontal ACTIVE badge and supports swipe-to-delete on first middle and last rows`() {
+    fun `watchlist layout on narrow 360dp screen shows active dot and supports swipe-to-delete on first middle and last rows`() {
         var watchlistItems by mutableStateOf(
             listOf(
                 WatchlistEntity("BTCUSDT", sortOrder = 0, lastPrice = 89500.0, priceChangePercent = 2.45, volume = 125_000_000.0),
@@ -232,21 +232,21 @@ class ExampleRobolectricTest {
             }
         }
 
-        // Verify ACTIVE badge is displayed horizontally on 360dp screen (width > height, never vertical)
-        val activeBadgeNode = composeTestRule.onNodeWithTag("watchlist_active_badge_BTCUSDT", useUnmergedTree = true)
-            .assertIsDisplayed()
-        composeTestRule.onNodeWithText("ACTIVE", useUnmergedTree = true).assertIsDisplayed()
-        val badgeBounds = activeBadgeNode.fetchSemanticsNode().boundsInRoot
-        assertTrue(
-            "ACTIVE badge must be horizontal (width ${badgeBounds.width} > height ${badgeBounds.height})",
-            badgeBounds.width > badgeBounds.height
-        )
+        // Compact market rows use a subtle active dot instead of a wide ACTIVE badge.
+        composeTestRule.onNodeWithTag(
+            "watchlist_active_badge_BTCUSDT", useUnmergedTree = true
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithTag(
+            "watchlist_price_text_BTCUSDT", useUnmergedTree = true
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithTag(
+            "watchlist_change_text_BTCUSDT", useUnmergedTree = true
+        ).assertIsDisplayed()
 
-        // Verify Market Status LED dots and readable status label for the selected symbol
+        // Market status LEDs remain readable across the first, middle and last rows.
         composeTestRule.onNodeWithTag("watchlist_led_BTCUSDT", useUnmergedTree = true).assertIsDisplayed()
         composeTestRule.onNodeWithTag("watchlist_led_ETHUSDT", useUnmergedTree = true).assertIsDisplayed()
         composeTestRule.onNodeWithTag("watchlist_led_SOLUSDT", useUnmergedTree = true).assertIsDisplayed()
-        composeTestRule.onNodeWithTag("watchlist_status_label_BTCUSDT", useUnmergedTree = true).assertIsDisplayed()
 
         // Verify first, middle, and last rows are displayed
         composeTestRule.onNodeWithTag("watchlist_item_BTCUSDT").assertIsDisplayed()
