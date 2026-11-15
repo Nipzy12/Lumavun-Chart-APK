@@ -126,17 +126,17 @@ import com.example.ui.theme.NeutralAmberSoft
 import java.util.Locale
 
 enum class MarketsSubTab(val label: String) {
-    WATCHLIST("Watchlist"),
+    WATCHLIST("Pantau"),
     CALENDAR("Calendar")
 }
 
 enum class MarketDiscoveryCategory(val label: String) {
     WATCHLIST("Watchlist"),
-    FAVORITES("★ Favorites"),
-    ALL_USDT("All USDT"),
-    TOP_VOLUME("Top Volume"),
-    TOP_GAINERS("Top Gainers"),
-    TOP_LOSERS("Top Losers")
+    FAVORITES("★ Favorit"),
+    ALL_USDT("USDT"),
+    TOP_VOLUME("Volume"),
+    TOP_GAINERS("Naik"),
+    TOP_LOSERS("Turun")
 }
 
 /**
@@ -874,32 +874,7 @@ fun MarketsScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Column headers (TradingView Watchlist table style: LEFT = SYMBOL / 24H VOL | RIGHT = LAST PRICE / 24H CHG%)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 2.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "SYMBOL / 24H VOL",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    softWrap = false
-                )
-                Text(
-                    text = "LAST PRICE / 24H CHG%",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    softWrap = false
-                )
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-
+            // Flat instrument list: price and % align naturally; no redundant table labels.
             if (selectedDiscoveryCategory == MarketDiscoveryCategory.WATCHLIST) {
                 if (filteredWatchlist.isEmpty()) {
                     Box(
