@@ -3,11 +3,11 @@ const core=window.LumavunIndicators,insights=window.LumavunInsight,paper=window.
 const byId=id=>document.getElementById(id);
 const storageKey='lumavun-chart-desktop-v2',paperKey='lumavun-chart-paper-v2';
 const defaultWatchlist=[{provider:'BINANCE',symbol:'BTCUSDT'},{provider:'BINANCE',symbol:'ETHUSDT'},{provider:'BINANCE',symbol:'SOLUSDT'},{provider:'BIQUOTE',symbol:'XAUUSD'}];
-const providers=['BINANCE','BIQUOTE','EXNESS','MT5'];
+const providers=['BINANCE','BIQUOTE','EXNESS','MT5','MCP'];
 function normalizeWatchItem(v) {
  const item=typeof v==='string'?{symbol:v,provider:'BINANCE'}:v;
  if(!item||!providers.includes(item.provider))return null;
- if(item.provider==='MT5'){
+ if(item.provider==='MT5'||item.provider==='MCP'){
   const sym=String(item.symbol||'').trim();
   return /^[A-Za-z0-9._-]{1,32}$/.test(sym)?{provider:'MT5',symbol:sym}:null;
  }
@@ -87,7 +87,7 @@ async function refreshWatchlistPrices(){
 function renderWatchlist(){
  const root=byId('watchlist');root.replaceChildren();byId('watchCount').textContent=state.watchlist.length+' PAIRS';
  byId('marketProvider').value=state.provider;
- byId('providerBadge').textContent=state.provider==='BINANCE'?'BINANCE SPOT':state.provider==='BIQUOTE'?'BIQUOTE':state.provider==='MT5'?'MT5 TERMINAL':'EXNESS GATEWAY';
+ byId('providerBadge').textContent=state.provider==='BINANCE'?'BINANCE SPOT':state.provider==='BIQUOTE'?'BIQUOTE':state.provider==='MT5'?'MT5 TERMINAL':state.provider==='MCP'?'MCP MT5 SERVER':'EXNESS GATEWAY';
  for(const item of state.watchlist){
   const row=document.createElement('div');row.className='watchItem'+(item.provider===state.provider&&item.symbol===state.symbol?' active':'');
   const pair=document.createElement('button');pair.type='button';pair.className='pairButton';pair.textContent=displaySymbol(item.symbol);

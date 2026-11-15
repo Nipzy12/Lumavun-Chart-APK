@@ -1,5 +1,5 @@
 'use strict';
-const {app,BrowserWindow,ipcMain,dialog,shell} = require('electron');
+const {app,BrowserWindow,ipcMain,dialog,shell,clipboard} = require('electron');
 const fs=require('node:fs/promises');
 const path=require('node:path');
 const market=require('./core/market.cjs');
@@ -8,11 +8,15 @@ const vision=require('./core/vision.cjs');
 const {LocalAiManager}=require('./core/local-ai-manager.cjs');
 const {MT5Client}=require('./core/mt5-client.cjs');
 const {MT5TradeGate}=require('./core/mt5-trade-gate.cjs');
+const {MT5McpHttpServer}=require('./core/mt5-mcp-http.cjs');
+const {MT5McpRemote}=require('./core/mt5-mcp-client.cjs');
 const hosts=['https://api.binance.com','https://api1.binance.com','https://data-api.binance.vision'];
 let gateway={url:'',token:'',symbols:[]};
 let aiConfig=null,aiBusy=false;
 const verifiedCandleCache=new Map();
 const mt5=new MT5Client({app});
+const mt5McpServer=new MT5McpHttpServer({bridge:mt5});
+const mt5McpRemote=new MT5McpRemote();
 const mt5Gate=new MT5TradeGate();
 let mt5Executing=false;
 async function currentMt5Account(){
@@ -83,6 +87,7 @@ ipcMain.handle('lumavun:gateway',async (_event,input)=>{
 });
 ipcMain.handle('lumavun:symbols',async (_event,provider,query)=>{
  if(provider==='MT5')return mt5.call('symbols',{query:String(query||'').trim().slice(0,32)});
+ if(provider==='MCP')return mt5McpRemote.call('symbols',{query:String(query||'').trim().slice(0,32)});
  if(provider==='EXNESS')return getGateway().symbols;
  if(provider==='BIQUOTE'){
   const q=String(query||'').trim().slice(0,40);
@@ -102,6 +107,7 @@ ipcMain.handle('lumavun:candles',async (_event,input)=>{
  if(provider==='BINANCE')result=await getBinance('/api/v3/klines',{symbol,interval,limit});
  else if(provider==='BIQUOTE')result=await getBiQuote('/api/'+encodeURIComponent(symbol)+'/ohlc',{interval,limit});
  else if(provider==='MT5')result=await mt5.call('candles',{symbol,interval,limit});
+ else if(provider==='MCP')result=await mt5McpRemote.call('candles',{symbol,interval,limit});
  else result=await getExness('/api/candles',{symbol,interval,limit},allowExnessSymbol(symbol));
  const candles=market.normalizeCandles(result);
  if(!candles.length)throw new Error(provider+' tidak mengembalikan candle OHLC yang valid.');
@@ -116,6 +122,12 @@ ipcMain.handle('lumavun:ticker',async (_event,input)=>{
  let result;
  if(provider==='BINANCE')result=await getBinance('/api/v3/ticker/24hr',{symbol});
  else if(provider==='BIQUOTE')result=await getBiQuote('/api/'+encodeURIComponent(symbol));
+ else if(provider==='MCP'){
+  const quote=await mt5McpRemote.call('ticker',{symbol});
+  if(quote?.symbol!==symbol||!(Number(quote.bid)>0)||!(Number(quote.ask)>=Number(quote.bid)))
+   throw Error('MCP server returned an invalid broker quote.');
+  return {...quote,provider:'MCP'};
+ }
  else if(provider==='MT5'){
   const quote=await mt5.call('ticker',{symbol});
   if(quote.provider!=='MT5'||quote.symbol!==symbol||!(quote.bid>0)||!(quote.ask>=quote.bid))
@@ -168,6 +180,39 @@ ipcMain.handle('lumavun:local-ai:start-runtime',()=>localAiManager.startRuntime(
 ipcMain.handle('lumavun:local-ai:pull-model',(_event,model)=>localAiManager.pullModel(model));
 ipcMain.handle('lumavun:local-ai:cancel-download',()=>localAiManager.cancelDownload());
 
+
+
+ipcMain.handle('lumavun:mcp:status',()=>({
+ local:mt5McpServer.status(),
+ connected:mt5McpRemote.status()
+}));
+ipcMain.handle('lumavun:mcp:start',async (_event,port)=>{
+ // Starts only on explicit user action, only on 127.0.0.1, with a new random key.
+ const result=await mt5McpServer.start(port==null?0:port);
+ return {running:result.running,url:result.url,readOnly:true,tools:result.tools};
+});
+ipcMain.handle('lumavun:mcp:reveal-key',()=>mt5McpServer.revealKey());
+ipcMain.handle('lumavun:mcp:copy-key',()=>{clipboard.writeText(mt5McpServer.revealKey());return {copied:true};});
+ipcMain.handle('lumavun:mcp:stop',async ()=>{
+ const old=mt5McpServer.status().url;
+ if(old&&mt5McpRemote.status().url===old)mt5McpRemote.disconnect();
+ await mt5McpServer.stop();
+ return mt5McpServer.status();
+});
+ipcMain.handle('lumavun:mcp:connect-local',async ()=>{
+ const local=mt5McpServer.status();
+ if(!local.running)throw Error('Start the local MCP server first.');
+ mt5McpRemote.disconnect();
+ return mt5McpRemote.connect(local.url,mt5McpServer.revealKey());
+});
+ipcMain.handle('lumavun:mcp:connect',async (_event,settings)=>{
+ // User-supplied URL and key never leave Electron main-process RAM after validation.
+ mt5McpRemote.disconnect();
+ return mt5McpRemote.connect(settings?.url,settings?.apiKey);
+});
+ipcMain.handle('lumavun:mcp:disconnect',()=>mt5McpRemote.disconnect());
+ipcMain.handle('lumavun:mcp:account',()=>mt5McpRemote.call('account',{}));
+ipcMain.handle('lumavun:mcp:positions',()=>mt5McpRemote.call('positions',{}));
 
 ipcMain.handle('lumavun:mt5:account',async ()=>currentMt5Account());
 ipcMain.handle('lumavun:mt5:positions',async ()=>mt5.call('positions',{}));
@@ -233,5 +278,10 @@ app.whenReady().then(()=>{
  window.webContents.on('will-navigate',(event,url)=>{event.preventDefault();openAttribution(url);});
  window.loadFile(path.join(__dirname,'renderer','index.html'));
 });
-app.on('before-quit',()=>{mt5Gate.lock();mt5.shutdown();});
+app.on('before-quit',()=>{
+ mt5Gate.lock();
+ mt5McpRemote.disconnect();
+ mt5McpServer.stop().catch(()=>{});
+ mt5.shutdown();
+});
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});

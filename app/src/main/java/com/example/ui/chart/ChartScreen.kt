@@ -63,6 +63,8 @@ import com.example.market.websocket.WsConnectionStatus
 import com.example.storage.preferences.TerminalSettings
 import com.example.ui.aiPanel.CompactAiAnalystCard
 import com.example.ui.components.MarketStatusLedDot
+import com.example.ui.components.premiumPanel
+import com.example.ui.theme.JetBrainsMonoFontFamily
 import com.example.ui.components.ledColorFor
 import com.example.ui.components.ledSoftBgFor
 import com.example.ui.indicators.TradingViewIndicatorsDialog
@@ -425,132 +427,73 @@ private fun CompactTerminalHeader(
     onStatusClick: () -> Unit,
     onExitFullscreen: () -> Unit
 ) {
-    val isPositive = priceChangePercent >= 0.0
-    val changeColor = if (isPositive) BullishGreen else BearishRed
-    val changeBg = if (isPositive) BullishGreenSoft else BearishRedSoft
-    val sign = if (isPositive) "+" else ""
+    val positive = priceChangePercent >= 0.0
+    val changeColor = if (positive) BullishGreen else BearishRed
+    val sign = if (positive) "+" else ""
+    val statusColor = ledColorFor(marketStatus.ledState)
+    val provider = marketStatus.provider
 
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 8.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .premiumPanel(cornerRadius = 15)
+            .padding(horizontal = 11.dp, vertical = 9.dp)
+            .testTag("chart_pro_market_header"),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Left: Market Status LED + Symbol + Price + % Change on a single compact row with nowrap tabular numbers
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f).clip(RoundedCornerShape(7.dp))
+                    .clickable(onClick = onPairClick).testTag("active_pair_selector"),
                 horizontalArrangement = Arrangement.spacedBy(5.dp),
-                modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .clickable(onClick = onPairClick)
-                    .testTag("active_pair_selector")
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                MarketStatusLedDot(
-                    status = marketStatus,
-                    dotSize = 8.dp,
-                    testTag = "chart_market_status_led"
-                )
+                MarketStatusLedDot(status = marketStatus, dotSize = 7.dp, testTag = "chart_market_status_led")
                 Text(
                     text = formatSymbolPair(symbol),
                     style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
-                    softWrap = false
+                    overflow = TextOverflow.Ellipsis
                 )
-                val prov = marketStatus.provider
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(if (prov == MarketProvider.EXNESS) Color(0xFFFFD700).copy(alpha = 0.2f) else CyanAccent.copy(alpha = 0.15f))
-                        .border(0.6.dp, if (prov == MarketProvider.EXNESS) Color(0xFFFFD700).copy(alpha = 0.5f) else CyanAccent.copy(alpha = 0.4f), RoundedCornerShape(3.dp))
-                        .padding(horizontal = 4.dp, vertical = 1.dp)
-                        .testTag("chart_provider_badge")
-                ) {
-                    Text(
-                        text = prov.code,
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                        color = if (prov == MarketProvider.EXNESS) Color(0xFFFFD700) else CyanAccent,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowDown,
-                    contentDescription = "Switch Pair",
+                    contentDescription = "Switch symbol",
                     tint = CyanAccent,
                     modifier = Modifier.size(15.dp)
                 )
-            }
-
-            Text(
-                text = if (currentPrice > 0.0) formatPriceWithPrefix(currentPrice, symbol) else "--",
-                style = MaterialTheme.typography.titleMedium,
-                color = changeColor,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                softWrap = false,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.testTag("live_price_text")
-            )
-
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(changeBg)
-                    .padding(horizontal = 4.dp, vertical = 2.dp)
-            ) {
-                Text(
-                    text = "$sign${String.format(Locale.US, "%.2f", priceChangePercent)}%",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = changeColor,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    softWrap = false
-                )
-            }
-        }
-
-        // Right: ⏱ Candle Countdown + Readable Market Status Badge (+ Exit Fullscreen button)
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            if (countdownFlow != null) {
-                IsolatedCandleCountdownBadge(
-                    countdownFlow = countdownFlow,
-                    fallbackTimeframe = timeframe
-                )
-            }
-
-            val statusTextCol = ledColorFor(marketStatus.ledState)
-            val statusBg = ledSoftBgFor(marketStatus.ledState)
-
-            Surface(
-                color = statusBg,
-                shape = RoundedCornerShape(4.dp),
-                modifier = Modifier
-                    .border(
-                        width = 0.8.dp,
-                        color = statusTextCol.copy(alpha = 0.45f),
-                        shape = RoundedCornerShape(4.dp)
+                Surface(
+                    color = if (provider == MarketProvider.EXNESS)
+                        Color(0x33F3C969) else CyanAccent.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(6.dp),
+                    modifier = Modifier.testTag("chart_provider_badge")
+                ) {
+                    Text(
+                        text = provider.code,
+                        color = if (provider == MarketProvider.EXNESS) Color(0xFFF3C969) else CyanAccent,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 3.dp),
+                        maxLines = 1
                     )
-                    .clickable(onClick = onStatusClick)
-                    .testTag("connection_status_badge")
+                }
+            }
+            Surface(
+                color = ledSoftBgFor(marketStatus.ledState),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.border(1.dp, statusColor.copy(alpha = 0.46f), RoundedCornerShape(8.dp))
+                    .clickable(onClick = onStatusClick).testTag("connection_status_badge")
             ) {
                 Row(
-                    modifier = Modifier
-                        .padding(horizontal = 6.dp, vertical = 3.dp)
+                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp)
                         .testTag("chart_market_status_badge"),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     MarketStatusLedDot(
                         status = marketStatus,
@@ -559,33 +502,63 @@ private fun CompactTerminalHeader(
                     )
                     Text(
                         text = marketStatus.shortBadgeLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = statusTextCol,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                        color = statusColor,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
-                        softWrap = false,
                         modifier = Modifier.testTag("chart_market_status_label")
                     )
                 }
             }
+        }
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            Text(
+                text = if (currentPrice > 0.0) formatPriceWithPrefix(currentPrice, symbol) else "--",
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontSize = 19.sp,
+                    fontFamily = JetBrainsMonoFontFamily,
+                    fontFeatureSettings = "tnum"
+                ),
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f).testTag("live_price_text")
+            )
+            Surface(
+                color = changeColor.copy(alpha = 0.12f),
+                shape = RoundedCornerShape(7.dp)
+            ) {
+                Text(
+                    text = "$sign${String.format(Locale.US, "%.2f", priceChangePercent)}%",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = changeColor,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 5.dp)
+                )
+            }
+            if (countdownFlow != null) {
+                IsolatedCandleCountdownBadge(countdownFlow = countdownFlow, fallbackTimeframe = timeframe)
+            }
             if (isFullscreen) {
                 Surface(
-                    color = CyanAccent.copy(alpha = 0.18f),
-                    shape = RoundedCornerShape(4.dp),
-                    modifier = Modifier
-                        .border(1.dp, CyanAccent.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
-                        .clickable(onClick = onExitFullscreen)
+                    color = CyanAccent.copy(alpha = 0.14f),
+                    shape = RoundedCornerShape(7.dp),
+                    modifier = Modifier.clickable(onClick = onExitFullscreen)
                         .testTag("exit_fullscreen_header_button")
                 ) {
                     Text(
-                        text = "Exit ⛶",
+                        text = "Exit",
                         style = MaterialTheme.typography.labelSmall,
-                        color = CyanAccent,
                         fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        softWrap = false,
-                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 3.dp)
+                        color = CyanAccent,
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 6.dp)
                     )
                 }
             }
@@ -648,36 +621,32 @@ fun TimeframeSelectorRow(
     modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
+        modifier = modifier.fillMaxWidth()
+            .premiumPanel(cornerRadius = 12)
+            .padding(horizontal = 4.dp, vertical = 4.dp)
             .testTag("timeframe_selector_row"),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Timeframe.entries.forEach { tf ->
-            val isSelected = tf == selectedTimeframe
-            val bg = if (isSelected) CyanAccent.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface
-            val textCol = if (isSelected) CyanAccent else MaterialTheme.colorScheme.onSurfaceVariant
-            val borderCol = if (isSelected) CyanAccent else Color.Transparent
-
-            Surface(
-                color = bg,
-                shape = RoundedCornerShape(5.dp),
-                modifier = Modifier
-                    .clip(RoundedCornerShape(5.dp))
-                    .border(1.dp, borderCol, RoundedCornerShape(5.dp))
-                    .clickable { onSelectTimeframe(tf) }
-                    .testTag("timeframe_chip_${tf.binanceInterval}")
+        Timeframe.entries.forEach { timeframe ->
+            val selected = timeframe == selectedTimeframe
+            val shape = RoundedCornerShape(8.dp)
+            Box(
+                modifier = Modifier.weight(1f).clip(shape)
+                    .background(if (selected) CyanAccent.copy(alpha = 0.19f) else Color.Transparent)
+                    .then(if (selected) Modifier.border(1.dp, CyanAccent.copy(alpha = 0.60f), shape) else Modifier)
+                    .clickable { onSelectTimeframe(timeframe) }
+                    .padding(vertical = 8.dp)
+                    .testTag("timeframe_chip_${timeframe.binanceInterval}"),
+                contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = tf.label,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = textCol,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    text = timeframe.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (selected) CyanAccent else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold,
                     maxLines = 1,
-                    softWrap = false,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                    softWrap = false
                 )
             }
         }
