@@ -207,6 +207,15 @@ fun MarketsScreen(
     val watchlistSymbolsSet = remember(watchlist) {
         watchlist.map { it.symbol.uppercase(Locale.US) }.toSet()
     }
+    val watchlistProviderKeys = remember(watchlist) {
+        watchlist.map { entry ->
+            val category = if (entry.category.isNotBlank())
+                InstrumentCategory.fromCode(entry.category) else inferInstrumentCategory(entry.symbol)
+            val provider = if (entry.provider.isNotBlank())
+                MarketProvider.fromCode(entry.provider) else inferMarketProvider(entry.symbol, category)
+            provider.code + ":" + entry.symbol.uppercase(Locale.US)
+        }.toSet()
+    }
 
     val filteredWatchlist = remember(watchlist, selectedCategory) {
         if (selectedCategory == InstrumentCategory.ALL) {
@@ -516,11 +525,12 @@ fun MarketsScreen(
                 keyboardActions = KeyboardActions(
                     onDone = {
                         if (searchQuery.isNotBlank()) {
-                            if (selectedSearchProvider == MarketProvider.EXNESS) {
-                                providerSearchResults.firstOrNull {
-                                    it.symbol.equals(searchQuery.trim(), ignoreCase = true) && it.status == "TRADING"
-                                }?.let(onAddMarketInstrument)
-                            } else onAddPair(searchQuery)
+                            val exactResult = providerSearchResults.firstOrNull {
+                                it.symbol.equals(searchQuery.trim(), ignoreCase = true) &&
+                                    it.status.equals("TRADING", ignoreCase = true)
+                            }
+                            if (exactResult != null) onAddMarketInstrument(exactResult)
+                            else if (selectedSearchProvider == null) onAddPair(searchQuery)
                         }
                     }
                 ),
@@ -531,7 +541,7 @@ fun MarketsScreen(
                     .testTag("pair_search_input")
             )
 
-            if (searchQuery.isNotBlank() && selectedSearchProvider != MarketProvider.EXNESS) {
+            if (searchQuery.isNotBlank() && selectedSearchProvider == null) {
                 Surface(
                     color = CyanAccent,
                     shape = RoundedCornerShape(10.dp),
@@ -714,6 +724,23 @@ fun MarketsScreen(
                                 textAlign = TextAlign.Center
                             )
                             OutlinedButton(onClick = onRefreshMarketSymbols) { Text("Refresh Instruments") }
+                        } else if (selectedSearchProvider != null) {
+                            Text(
+                                text = "Tidak ada simbol terverifikasi untuk " +
+                                    selectedSearchProvider!!.displayLabel,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Perbarui katalog provider atau pilih simbol lain. Daftar contoh bukan bukti ketersediaan data.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                            OutlinedButton(onClick = onRefreshMarketSymbols) {
+                                Text("Segarkan katalog")
+                            }
                         } else if (normalizedCandidate.isNotEmpty()) {
                             Text(
                                 text = "${formatSymbolPair(normalizedCandidate)} belum ada di cache lokal",
@@ -762,7 +789,9 @@ fun MarketsScreen(
                         .testTag("pair_search_results_list")
                 ) {
                     items(providerSearchResults, key = { "${it.provider.code}:${it.symbol}" }) { item ->
-                        val inWatchlist = watchlistSymbolsSet.contains(item.symbol.uppercase(Locale.US))
+                        val inWatchlist = watchlistProviderKeys.contains(
+                            item.provider.code + ":" + item.symbol.uppercase(Locale.US)
+                        )
                         val isFav = favoriteSymbols.contains(item.symbol.uppercase(Locale.US))
                         val liveTicker = liveTickers[item.symbol]
                         val connStatus = when (item.provider) {
