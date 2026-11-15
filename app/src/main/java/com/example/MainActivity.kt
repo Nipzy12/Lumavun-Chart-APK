@@ -726,7 +726,7 @@ fun GlobalHeaderBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
+                 .height(44.dp)
                 .padding(horizontal = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
@@ -765,11 +765,13 @@ fun GlobalHeaderBar(
                     .testTag("header_app_logo")
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.Android,
-                        contentDescription = "LUMAVUN Logo",
-                        tint = CyanAccent,
-                        modifier = Modifier.size(18.dp)
+                    Text(
+                        text = "LV",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontSize = 11.sp,
+                        color = CyanAccent,
+                        fontWeight = FontWeight.ExtraBold,
+                        maxLines = 1
                     )
                 }
             }
