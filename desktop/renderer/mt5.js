@@ -221,7 +221,8 @@
    'Internal MCP aktif: '+local.url+' · localhost only · six read-only tools.':
    'Server internal belum dijalankan. Kunci dibuat saat tombol Start ditekan.');
   mcpMessage('mcpRemoteStatus',remote.connected?
-   'Aplikasi terhubung: '+remote.url+' · Tools: '+remote.tools.join(', '):
+   (remote.mode==='MT5_NATIVE'?'MCP MT5 BAWAAN · ':'MCP LUMAVUN · ')+
+   'Aplikasi terhubung: '+remote.url+' · Tool baca-saja: '+remote.tools.join(', '):
    'Belum terhubung ke endpoint MCP. Mulai server lokal atau masukkan URL dan API key.');
   el('mcpConnectLocal').disabled=!local.running||mcpBusy;
   el('mcpStop').disabled=!local.running||mcpBusy;
@@ -243,6 +244,11 @@
   }catch(error){mcpMessage('mcpTestResult','MCP error: '+String(error.message||error));}
   finally{mcpBusy=false;await refreshMcp().catch(e=>mcpMessage('mcpTestResult',e.message));}
  }
+ el('mcpUseNativeAddress').addEventListener('click',()=>{
+  el('mcpServerUrl').value='http://127.0.0.1:22346/mcp';
+  el('mcpServerKey').value='';el('mcpServerKey').type='password';
+  mcpMessage('mcpTestResult','Salin API key BARU dari MT5 → Peralatan → Pilihan → MCP. Centang Aktifkan server internal dan klik OK, lalu Hubungkan URL + Key. Bila port berbeda, gunakan alamat persis dari MT5.');
+ });
  el('mcpStart').addEventListener('click',()=>mcpAction(async()=>{
   const server=await window.lumavun.mcpStart(0);
   el('mcpServerUrl').value=server.url;el('mcpServerKey').value='';
@@ -260,7 +266,9 @@
   const key=el('mcpServerKey').value;
   const remote=await window.lumavun.mcpConnect(url,key);
   el('mcpServerKey').value='';el('mcpServerKey').type='password';
-  mcpMessage('mcpTestResult','Terhubung dengan '+remote.url+' melalui Bearer key. Tool baca-saja: '+remote.tools.join(', '));
+  mcpMessage('mcpTestResult',(remote.mode==='MT5_NATIVE'?'MCP MT5 bawaan tersambung. ':'MCP gateway LUMAVUN tersambung. ')+
+   'Alamat: '+remote.url+' · Tool baca-saja: '+remote.tools.join(', ')+
+   '. Koneksi MCP belum menjamin data broker tersedia. Periksa akun dan chart.');
  }));
  el('mcpRevealKey').addEventListener('click',()=>mcpAction(async()=>{
   const key=await window.lumavun.mcpRevealKey();
@@ -284,7 +292,7 @@
  el('mcpTestMarket').addEventListener('click',()=>mcpAction(async()=>{
   const account=await window.lumavun.mcpAccount();
   mcpMessage('mcpTestResult','MT5 '+account.mode+' · '+account.account+' · '+account.server+
-   ' · saldo '+account.balance+' '+account.currency+'. Data bersumber dari terminal MT5 server MCP.');
+   ' · saldo '+account.balance+' '+account.currency+'. Data dibaca lewat MCP dengan tool akun baca-saja.');
  }));
  el('mcpOpenChart').addEventListener('click',()=>mcpAction(async()=>{
   const symbol=el('mt5Symbol').value.trim();
