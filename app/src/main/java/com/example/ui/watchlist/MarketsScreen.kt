@@ -30,9 +30,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -66,6 +69,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
@@ -184,14 +188,21 @@ fun MarketsScreen(
         is ProviderConnectionStatus.Connecting, is ProviderConnectionStatus.Stale -> WsConnectionStatus.RECONNECTING
         else -> WsConnectionStatus.DISCONNECTED
     }
-    val providerSearchResults = remember(searchResults, selectedSearchProvider) {
-        searchResults.filter { selectedSearchProvider == null || it.provider == selectedSearchProvider }
+    val providerSearchResults = remember(searchResults, selectedSearchProvider, selectedCategory) {
+        searchResults.filter {
+            (selectedSearchProvider == null || it.provider == selectedSearchProvider) &&
+                (selectedCategory == InstrumentCategory.ALL || it.category == selectedCategory)
+        }
     }
     var recentlyDeletedSymbol by remember { mutableStateOf<String?>(null) }
     var showAddSymbolQuickList by remember { mutableStateOf(false) }
     // Requirement B: Restrict swipe-to-delete to one active row at a time
     var activeSwipedSymbol by remember { mutableStateOf<String?>(null) }
     val searchFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(showAddSymbolQuickList) {
+        if (showAddSymbolQuickList) runCatching { searchFocusRequester.requestFocus() }
+    }
+    var collapsedWatchlistGroups by remember { mutableStateOf(emptySet<InstrumentCategory>()) }
 
     val watchlistSymbolsSet = remember(watchlist) {
         watchlist.map { it.symbol.uppercase(Locale.US) }.toSet()
@@ -230,106 +241,115 @@ fun MarketsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 12.dp, vertical = 10.dp)
+            .padding(horizontal = 8.dp, vertical = 5.dp)
             .testTag("markets_screen")
     ) {
-        // TradingView-style Watchlist Header with Refresh & "+ Symbol" buttons
+        // Market-first navigation: search is a full-screen mode, not a permanent toolbar.
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 7.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "WATCHLIST",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    softWrap = false
-                )
-                Text(
-                    text = "${watchlist.size} instruments · Crypto, Forex, Metals, Stocks & Indices",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Ellipsis
-                )
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (showAddSymbolQuickList || searchQuery.isNotBlank()) {
+                    IconButton(
+                        onClick = {
+                            showAddSymbolQuickList = false
+                            onSearchQueryChange("")
+                            onSelectCategory(InstrumentCategory.ALL)
+                        },
+                        modifier = Modifier.size(38.dp).testTag("symbol_search_back_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Kembali ke Daftar Pantau",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    Text(
+                        text = if (showAddSymbolQuickList || searchQuery.isNotBlank())
+                            "Cari Simbol" else "Daftar Pantau",
+                        style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.ExtraBold,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = if (showAddSymbolQuickList || searchQuery.isNotBlank())
+                            "Pilih sumber data yang sesuai" else "${watchlist.size} instrumen · LUMAVUN Market",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
 
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    color = MaterialTheme.colorScheme.surface,
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier
-                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f), RoundedCornerShape(8.dp))
-                        .clickable { onRefreshWatchlist() }
-                        .testTag("watchlist_refresh_button")
+                IconButton(
+                    onClick = onRefreshWatchlist,
+                    modifier = Modifier.size(38.dp).testTag("watchlist_refresh_button")
                 ) {
-                    Box(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (isLoadingWatchlistData) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(15.dp),
-                                strokeWidth = 2.dp,
-                                color = CyanAccent
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = "Refresh Watchlist Data",
-                                tint = CyanAccent,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
+                    if (isLoadingWatchlistData) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(17.dp), strokeWidth = 2.dp, color = CyanAccent
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Perbarui data pasar",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(19.dp)
+                        )
                     }
                 }
-
                 Surface(
-                    color = CyanAccent.copy(alpha = 0.16f),
-                    shape = RoundedCornerShape(8.dp),
+                    color = CyanAccent.copy(alpha = 0.13f),
+                    shape = RoundedCornerShape(10.dp),
                     modifier = Modifier
-                        .border(1.dp, CyanAccent.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
+                        .border(1.dp, CyanAccent.copy(alpha = 0.42f), RoundedCornerShape(10.dp))
                         .clickable {
-                            showAddSymbolQuickList = !showAddSymbolQuickList
-                            activeSwipedSymbol = null
-                            if (showAddSymbolQuickList) {
-                                runCatching { searchFocusRequester.requestFocus() }
+                            val next = !(showAddSymbolQuickList || searchQuery.isNotBlank())
+                            showAddSymbolQuickList = next
+                            if (!next) {
+                                onSearchQueryChange("")
+                                onSelectCategory(InstrumentCategory.ALL)
                             }
+                            activeSwipedSymbol = null
                         }
                         .testTag("watchlist_add_symbol_button")
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = if (showAddSymbolQuickList) Icons.Default.Close else Icons.Default.Add,
-                            contentDescription = "Add Symbol",
+                            imageVector = if (showAddSymbolQuickList || searchQuery.isNotBlank())
+                                Icons.Default.Close else Icons.Default.Add,
+                            contentDescription = "Tambah simbol",
                             tint = CyanAccent,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                         Text(
-                            text = if (showAddSymbolQuickList) "Close Add" else "+ Symbol",
+                            text = if (showAddSymbolQuickList || searchQuery.isNotBlank()) "Tutup" else "Simbol",
                             style = MaterialTheme.typography.labelMedium,
                             color = CyanAccent,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            softWrap = false
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
             }
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
 
         // Feedback Banner for Add / Duplicate / Invalid Symbol / API Error / Loading
         AnimatedVisibility(visible = !feedbackMessage.isNullOrBlank()) {
@@ -449,7 +469,8 @@ fun MarketsScreen(
             }
         }
 
-        // Dynamic Pair Search & Direct Add Row (Requirement C)
+        if (showAddSymbolQuickList || searchQuery.isNotBlank()) {
+        // Symbol finder: shows categorized, provider-specific instruments.
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -463,7 +484,7 @@ fun MarketsScreen(
                 },
                 placeholder = {
                     Text(
-                        text = "Search Crypto, Forex, Gold, Stocks (BTC, EURUSD, XAUUSD, AAPL)...",
+                        text = "BTCUSDT, XAUUSD, EURUSD, AAPL...",
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
                         softWrap = false,
@@ -634,8 +655,7 @@ fun MarketsScreen(
         }
         Spacer(modifier = Modifier.height(8.dp))
 
-        if (searchQuery.isNotBlank() || showAddSymbolQuickList) {
-            // Search Results from Multi-Market Catalog (Binance USDT + BiQuote Forex/Metals/Stocks/Indices)
+        // Search Results from multi-provider market catalogs.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -786,7 +806,7 @@ fun MarketsScreen(
                 }
             }
         } else {
-            // Market Discovery Filter Tabs
+            // Compact watchlist: the market rows own the vertical space.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
