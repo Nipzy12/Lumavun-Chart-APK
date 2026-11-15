@@ -109,6 +109,11 @@ async function main(){
   await page.locator('[data-route="chart"]').click();
   assert.equal(await page.locator('.workspace').evaluate(el=>el.classList.contains('nonChart')),false);
   assert.equal(await page.locator('#chart').isVisible(),true);
+  // Wait for any initial live feed request before injecting isolated test candles.
+  await page.waitForFunction(()=>{
+   const status=document.getElementById('status')?.textContent?.trim();
+   return status==='ONLINE'||status==='ERROR';
+  },null,{timeout:14000}).catch(()=>{});
   // Offline CI chart fixtures are labelled. These are NOT live trading quotes.
   await page.evaluate(()=>{
    const base=Math.floor(Date.now()/1000)-260*900;
@@ -125,7 +130,9 @@ async function main(){
     highPrice:Math.max(...bars.map(c=>c.high)),lowPrice:Math.min(...bars.map(c=>c.low)),volume:123456});
    document.getElementById('lastPrice').textContent=bars.at(-1).close.toLocaleString('en-US',{maximumFractionDigits:2});
    document.getElementById('priceChange').textContent='+1.20% CI FIXTURE';
-   const tag=document.createElement('div');tag.id='ciFixtureTag';tag.textContent='CI TEST FIXTURE · NOT LIVE MARKET DATA';
+   document.querySelector('.tvTopTools').scrollLeft=0;
+   const toast=document.getElementById('tvToast');if(toast)toast.hidden=true;
+   const tag=document.createElement('div');tag.id='ciFixtureTag';tag.textContent='UI TEST CANDLES · NOT LIVE MARKET DATA';
    tag.style.cssText='position:absolute;right:14px;top:37px;z-index:9;padding:4px 9px;background:#573d1e;color:#ffd58d;font-size:10px';
    document.querySelector('.tvChartCard').append(tag);
   });
