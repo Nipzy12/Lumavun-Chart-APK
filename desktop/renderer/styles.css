@@ -384,3 +384,45 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .tvTopTools{scrollbar-width:none}
 .tvTopTools::-webkit-scrollbar{display:none}
 .tvWatchHead,.tvWatchColumns,.sidebar .watchlist,.sidebar .tvSideQuote{position:relative;z-index:1}
+
+
+/* MT5 desktop trading page v0.8 */
+.mt5Page{padding:21px!important;max-height:calc(100vh - 40px);overflow-y:auto}
+.mt5ConnectBar{border:1px solid #33435f;border-radius:10px;background:#182334;padding:17px 19px;display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
+.mt5ConnectBar strong{font-size:14px;color:#e2e9f8}.mt5ConnectBar p,.mt5Card p{font-size:11px;line-height:1.65;color:#9bacbf}
+.mt5ButtonRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mt5ButtonRow button{font-size:11px;border-radius:6px;padding:9px 12px}
+.mt5AccountGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0}
+.mt5Stat{border:1px solid #303d54;border-radius:8px;background:#192232;padding:13px 15px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.mt5Stat span{color:#94a1b5;font-size:10px}.mt5Stat strong{color:#e2e8f6;font-size:14px;word-break:break-word}
+.mt5Stat strong.real{color:#ff8e8a}.mt5Stat strong.demo{color:#74d5b7}
+.mt5TradeGrid{display:grid;grid-template-columns:minmax(320px,1fr) minmax(290px,1fr);gap:14px}
+.mt5Card{border:1px solid #303d54;border-radius:10px;background:#151d2b;padding:18px;min-width:0}
+.mt5CardTitle{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.mt5CardTitle h2{font-size:16px;margin:0;color:#e4e9f4}
+#mt5LockBadge{font-size:10px;color:#ffc0ba;border:1px solid #673c40;background:#37242b;border-radius:5px;padding:5px 10px}
+#mt5LockBadge.unlocked{color:#a5eccd;background:#1b4036;border-color:#32735a}
+.mt5Card code{color:#dcc1ff;font-family:Consolas,monospace}
+.mt5Field{display:flex;flex-direction:column;gap:6px;min-width:0;margin:12px 0}
+.mt5Field label,.mt5PreviewBox label,.mt5McpPanel label{font-size:10px;color:#aab9d0}
+.mt5Field input,.mt5Field select,.mt5PreviewBox input,.mt5McpPanel textarea{width:100%;max-width:100%;padding:10px;background:#0d1725;border:1px solid #3d4c64;border-radius:6px;color:#e8edf8;font-size:12px;font-family:inherit}
+.mt5FieldsTwo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.mt5Check{font-size:10px;color:#d0a6a3;display:flex;align-items:start;gap:8px;line-height:1.7;margin:9px 0}
+.mt5Check input{margin-top:3px;flex-shrink:0;accent-color:#f58379}
+.mt5OrderForm{border-top:1px solid #2d394c;padding-top:10px;margin-top:15px}
+#mt5Preview{width:100%;margin-top:7px}
+#mt5Preview:disabled,.mt5Execute:disabled{opacity:.4;cursor:not-allowed}
+.mt5PreviewBox{border:1px solid #957143;background:#32291f;border-radius:8px;padding:14px;margin-top:16px;display:flex;flex-direction:column;gap:10px}
+.mt5PreviewBox[hidden]{display:none}
+.mt5PreviewBox strong{color:#f8d99e;font-size:13px}.mt5PreviewBox p{margin:0;white-space:pre-line;color:#eee0c6}
+.mt5Execute{border:none;border-radius:6px;background:#d45147;color:white;padding:11px;font-weight:750;font-size:12px}
+.mt5PreviewBox small{color:#c7aa8a;font-size:10px}
+#mt5TradeMessage{background:#1b2a40;padding:10px 12px;border-radius:6px;min-height:34px;word-break:break-word}
+.mt5Positions{display:flex;flex-direction:column;gap:8px;max-height:320px;overflow:auto;font-size:11px}
+.mt5Position{border:1px solid #35445d;border-radius:6px;padding:11px 13px;display:flex;justify-content:space-between;gap:12px}
+.mt5Position strong{display:block;margin-bottom:5px}
+.mt5Position small{color:#a0b0c7;font-size:10px}
+.mt5McpPanel{margin-top:23px;border-top:1px solid #35445c;padding-top:18px}
+.mt5McpPanel h3{font-size:13px;color:#dce5f4}
+.mt5McpPanel textarea{margin-top:9px;resize:none;font-family:Consolas,monospace;font-size:10px}
+@media(max-width:1100px){.mt5AccountGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.mt5TradeGrid{grid-template-columns:minmax(0,1fr)}}
