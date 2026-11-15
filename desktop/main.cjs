@@ -6,10 +6,22 @@ const market=require('./core/market.cjs');
 const ai=require('./core/ai-analyst.cjs');
 const vision=require('./core/vision.cjs');
 const {LocalAiManager}=require('./core/local-ai-manager.cjs');
+const {MT5Client}=require('./core/mt5-client.cjs');
+const {MT5TradeGate}=require('./core/mt5-trade-gate.cjs');
 const hosts=['https://api.binance.com','https://api1.binance.com','https://data-api.binance.vision'];
 let gateway={url:'',token:'',symbols:[]};
 let aiConfig=null,aiBusy=false;
 const verifiedCandleCache=new Map();
+const mt5=new MT5Client({app});
+const mt5Gate=new MT5TradeGate();
+let mt5Executing=false;
+async function currentMt5Account(){
+ const account=await mt5.call('account',{});
+ const session=mt5Gate.getStatus();
+ if(session.unlocked&&(session.account!==account.account||session.environment!==account.mode))
+  mt5Gate.lock();
+ return account;
+}
 const localAiManager=new LocalAiManager({
  notify:event=>{
   for(const window of BrowserWindow.getAllWindows()){
@@ -70,6 +82,7 @@ ipcMain.handle('lumavun:gateway',async (_event,input)=>{
  return {url,count:symbols.length,symbols:symbols.filter(x=>['TRADING','ACTIVE','OPEN'].includes(x.status)).slice(0,150)};
 });
 ipcMain.handle('lumavun:symbols',async (_event,provider,query)=>{
+ if(provider==='MT5')return mt5.call('symbols',{query:String(query||'').trim().slice(0,32)});
  if(provider==='EXNESS')return getGateway().symbols;
  if(provider==='BIQUOTE'){
   const q=String(query||'').trim().slice(0,40);
@@ -88,6 +101,7 @@ ipcMain.handle('lumavun:candles',async (_event,input)=>{
  let result;
  if(provider==='BINANCE')result=await getBinance('/api/v3/klines',{symbol,interval,limit});
  else if(provider==='BIQUOTE')result=await getBiQuote('/api/'+encodeURIComponent(symbol)+'/ohlc',{interval,limit});
+ else if(provider==='MT5')result=await mt5.call('candles',{symbol,interval,limit});
  else result=await getExness('/api/candles',{symbol,interval,limit},allowExnessSymbol(symbol));
  const candles=market.normalizeCandles(result);
  if(!candles.length)throw new Error(provider+' tidak mengembalikan candle OHLC yang valid.');
@@ -102,6 +116,12 @@ ipcMain.handle('lumavun:ticker',async (_event,input)=>{
  let result;
  if(provider==='BINANCE')result=await getBinance('/api/v3/ticker/24hr',{symbol});
  else if(provider==='BIQUOTE')result=await getBiQuote('/api/'+encodeURIComponent(symbol));
+ else if(provider==='MT5'){
+  const quote=await mt5.call('ticker',{symbol});
+  if(quote.provider!=='MT5'||quote.symbol!==symbol||!(quote.bid>0)||!(quote.ask>=quote.bid))
+   throw Error('MT5 returned an invalid broker quote.');
+  return quote;
+ }
  else result=await getExness('/api/quote',{symbol},allowExnessSymbol(symbol));
  return market.normalizeQuote(result,symbol,provider);
 });
@@ -148,6 +168,40 @@ ipcMain.handle('lumavun:local-ai:start-runtime',()=>localAiManager.startRuntime(
 ipcMain.handle('lumavun:local-ai:pull-model',(_event,model)=>localAiManager.pullModel(model));
 ipcMain.handle('lumavun:local-ai:cancel-download',()=>localAiManager.cancelDownload());
 
+
+ipcMain.handle('lumavun:mt5:account',async ()=>currentMt5Account());
+ipcMain.handle('lumavun:mt5:positions',async ()=>mt5.call('positions',{}));
+ipcMain.handle('lumavun:mt5:mcp-config',()=>mt5.mcpCommand());
+ipcMain.handle('lumavun:mt5:gate-status',()=>mt5Gate.getStatus());
+ipcMain.handle('lumavun:mt5:unlock',async (_event,input)=>{
+ const account=await currentMt5Account();
+ return mt5Gate.unlock(account,input?.phrase,input?.acceptReal===true);
+});
+ipcMain.handle('lumavun:mt5:lock',()=>{
+ mt5Gate.lock();return mt5Gate.getStatus();
+});
+ipcMain.handle('lumavun:mt5:preview',async (_event,input)=>{
+ const account=await currentMt5Account();
+ mt5Gate.assertUnlocked(account);
+ if(mt5Executing)throw Error('Previous MT5 order execution still in progress.');
+ const args={
+  symbol:market.symbol(input?.symbol,'MT5'),
+  side:input?.side,volume:input?.volume,sl:input?.sl,tp:input?.tp
+ };
+ const preview=await mt5.call('preview_order',args,20000);
+ return mt5Gate.createPreview(account,preview);
+});
+ipcMain.handle('lumavun:mt5:execute',async (_event,input)=>{
+ if(mt5Executing)throw Error('Previous MT5 order execution still in progress.');
+ mt5Executing=true;
+ try{
+  const account=await currentMt5Account();
+  const args=mt5Gate.consume(account,input?.token,input?.phrase);
+  // At most one request. If the result is unknown, never retry automatically.
+  return await mt5.call('execute_order',args,90000);
+ }finally{mt5Executing=false;}
+});
+
 ipcMain.handle('lumavun:chart:save-png',async (_event,dataUrl)=>{
  const image=vision.validateChartPng(dataUrl);
  const result=await dialog.showSaveDialog({
@@ -179,4 +233,5 @@ app.whenReady().then(()=>{
  window.webContents.on('will-navigate',(event,url)=>{event.preventDefault();openAttribution(url);});
  window.loadFile(path.join(__dirname,'renderer','index.html'));
 });
+app.on('before-quit',()=>{mt5Gate.lock();mt5.shutdown();});
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});

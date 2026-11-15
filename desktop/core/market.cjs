@@ -1,8 +1,13 @@
 'use strict';
 const INTERVALS = new Set(['1m','5m','15m','30m','1h','4h','1d']);
-const PROVIDERS = new Set(['BINANCE','BIQUOTE','EXNESS']);
+const PROVIDERS = new Set(['BINANCE','BIQUOTE','EXNESS','MT5']);
 function symbol(input, provider) {
   if (!PROVIDERS.has(provider)) throw new Error('Unknown market provider.');
+  if(provider==='MT5'){
+    const raw=String(input||'').trim();
+    if(!/^[A-Za-z0-9._-]{1,32}$/.test(raw))throw new Error('Invalid MT5 broker symbol.');
+    return raw;
+  }
   const text = String(input || '').toUpperCase().trim().replace(/[\/_\-\s]/g,'');
   if (!/^[A-Z0-9.]{1,20}$/.test(text)) throw new Error('Invalid market symbol.');
   if (provider === 'BINANCE' && (!text.endsWith('USDT') || text.length < 5 || text.includes('.')))
