@@ -1,5 +1,5 @@
 'use strict';
-const {app,BrowserWindow,ipcMain,dialog,shell} = require('electron');
+const {app,BrowserWindow,ipcMain,dialog,shell,clipboard} = require('electron');
 const fs=require('node:fs/promises');
 const path=require('node:path');
 const market=require('./core/market.cjs');
@@ -192,6 +192,7 @@ ipcMain.handle('lumavun:mcp:start',async (_event,port)=>{
  return {running:result.running,url:result.url,readOnly:true,tools:result.tools};
 });
 ipcMain.handle('lumavun:mcp:reveal-key',()=>mt5McpServer.revealKey());
+ipcMain.handle('lumavun:mcp:copy-key',()=>{clipboard.writeText(mt5McpServer.revealKey());return {copied:true};});
 ipcMain.handle('lumavun:mcp:stop',async ()=>{
  const old=mt5McpServer.status().url;
  if(old&&mt5McpRemote.status().url===old)mt5McpRemote.disconnect();

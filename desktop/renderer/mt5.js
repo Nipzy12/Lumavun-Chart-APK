@@ -206,4 +206,101 @@
  }
  showMcpConfig();
  renderLock({unlocked:false});
+
+ // Explicit user-controlled MCP HTTP server and authenticated connection.
+ // External URL/API key values stay in Electron main-process memory after connection.
+ let mcpBusy=false;
+ function mcpMessage(id,text){el(id).textContent=String(text||'').slice(0,650);}
+ async function refreshMcp(){
+  const state=await window.lumavun.mcpStatus();
+  const local=state.local,remote=state.connected;
+  const badge=el('mcpLocalBadge');
+  badge.textContent=local.running?'RUNNING':'OFF';
+  badge.classList.toggle('online',local.running);
+  mcpMessage('mcpLocalStatus',local.running?
+   'Internal MCP aktif: '+local.url+' · localhost only · six read-only tools.':
+   'Server internal belum dijalankan. Kunci dibuat saat tombol Start ditekan.');
+  mcpMessage('mcpRemoteStatus',remote.connected?
+   'Aplikasi terhubung: '+remote.url+' · Tools: '+remote.tools.join(', '):
+   'Belum terhubung ke endpoint MCP. Mulai server lokal atau masukkan URL dan API key.');
+  el('mcpConnectLocal').disabled=!local.running||mcpBusy;
+  el('mcpStop').disabled=!local.running||mcpBusy;
+  el('mcpRevealKey').disabled=!local.running||mcpBusy;
+  el('mcpCopyKey').disabled=!local.running||mcpBusy;
+  el('mcpDisconnect').disabled=!remote.connected||mcpBusy;
+  el('mcpTestMarket').disabled=!remote.connected||mcpBusy;
+  el('mcpOpenChart').disabled=!remote.connected||mcpBusy;
+  el('mcpStart').disabled=local.running||mcpBusy;
+  el('mcpConnect').disabled=mcpBusy;
+  if(local.running&&!el('mcpServerUrl').value)el('mcpServerUrl').value=local.url;
+  return state;
+ }
+ async function mcpAction(action){
+  if(mcpBusy)return;
+  mcpBusy=true;
+  try{
+   await action();
+  }catch(error){mcpMessage('mcpTestResult','MCP error: '+String(error.message||error));}
+  finally{mcpBusy=false;await refreshMcp().catch(e=>mcpMessage('mcpTestResult',e.message));}
+ }
+ el('mcpStart').addEventListener('click',()=>mcpAction(async()=>{
+  const server=await window.lumavun.mcpStart(0);
+  el('mcpServerUrl').value=server.url;el('mcpServerKey').value='';
+  el('mcpServerKey').type='password';
+  mcpMessage('mcpTestResult','Server dibuat. Alamat '+server.url+
+   '. Klik Hubungkan Server Lokal untuk menghubungkan aplikasi. Key baru dibuat otomatis.');
+ }));
+ el('mcpConnectLocal').addEventListener('click',()=>mcpAction(async()=>{
+  const result=await window.lumavun.mcpConnectLocal();
+  mcpMessage('mcpTestResult','MCP internal terhubung ke aplikasi. Server tool tersedia: '+result.tools.join(', ')+
+   '. Koneksi ini belum membuktikan MT5 broker sedang online.');
+ }));
+ el('mcpConnect').addEventListener('click',()=>mcpAction(async()=>{
+  const url=el('mcpServerUrl').value.trim();
+  const key=el('mcpServerKey').value;
+  const remote=await window.lumavun.mcpConnect(url,key);
+  el('mcpServerKey').value='';el('mcpServerKey').type='password';
+  mcpMessage('mcpTestResult','Terhubung dengan '+remote.url+' melalui Bearer key. Tool baca-saja: '+remote.tools.join(', '));
+ }));
+ el('mcpRevealKey').addEventListener('click',()=>mcpAction(async()=>{
+  const key=await window.lumavun.mcpRevealKey();
+  el('mcpServerKey').value=key;el('mcpServerKey').type='text';
+  mcpMessage('mcpTestResult','Key lokal ditampilkan hanya pada sesi ini. Jangan membagikannya ke orang lain.');
+ }));
+ el('mcpCopyKey').addEventListener('click',()=>mcpAction(async()=>{
+  await window.lumavun.mcpCopyKey();
+  mcpMessage('mcpTestResult','API key MCP lokal disalin ke clipboard Windows.');
+ }));
+ el('mcpStop').addEventListener('click',()=>mcpAction(async()=>{
+  await window.lumavun.mcpStop();
+  el('mcpServerUrl').value='';el('mcpServerKey').value='';el('mcpServerKey').type='password';
+  mcpMessage('mcpTestResult','Server internal berhenti. API key lama tidak berlaku lagi.');
+ }));
+ el('mcpDisconnect').addEventListener('click',()=>mcpAction(async()=>{
+  await window.lumavun.mcpDisconnect();
+  el('mcpServerKey').value='';el('mcpServerKey').type='password';
+  mcpMessage('mcpTestResult','Koneksi MCP dilepas dari LUMAVUN Chart.');
+ }));
+ el('mcpTestMarket').addEventListener('click',()=>mcpAction(async()=>{
+  const account=await window.lumavun.mcpAccount();
+  mcpMessage('mcpTestResult','MT5 '+account.mode+' · '+account.account+' · '+account.server+
+   ' · saldo '+account.balance+' '+account.currency+'. Data bersumber dari terminal MT5 server MCP.');
+ }));
+ el('mcpOpenChart').addEventListener('click',()=>mcpAction(async()=>{
+  const symbol=el('mt5Symbol').value.trim();
+  if(!/^[A-Za-z0-9._-]{1,32}$/.test(symbol))throw Error('Enter the exact MT5 broker symbol.');
+  const quote=await window.lumavun.ticker('MCP',symbol);
+  if(!(Number(quote.bid)>0&&Number(quote.ask)>=Number(quote.bid)))
+   throw Error('MCP broker quote not available.');
+  const item=normalizeWatchItem({provider:'MCP',symbol});
+  if(!item)throw Error('Invalid MCP MT5 symbol.');
+  if(!state.watchlist.some(i=>i.provider==='MCP'&&i.symbol===symbol)){
+   if(state.watchlist.length>=40)throw Error('Watchlist is full.');
+   state.watchlist.push(item);
+  }
+  state.provider='MCP';state.symbol=symbol;
+  save();renderWatchlist();showPage('chart');await refresh(true);
+ }));
+ refreshMcp().catch(e=>mcpMessage('mcpTestResult',e.message));
+
 })();

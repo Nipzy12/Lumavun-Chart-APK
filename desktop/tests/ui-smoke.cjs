@@ -111,6 +111,21 @@ async function main(){
   assert.equal(await page.locator('#mt5Execute').isDisabled(),true);
   await page.locator('#mt5McpCommand').waitFor({state:'visible'});
   assert.match(await page.locator('#mt5McpCommand').inputValue(),/bridge\.py.*--mcp/);
+  assert.equal(await page.locator('#mcpStart').isEnabled(),true,'Internal MCP must be opt-in.');
+  await page.locator('#mcpStart').click();
+  await page.waitForFunction(()=>document.getElementById('mcpLocalStatus')?.textContent?.includes('Internal MCP aktif'),null,{timeout:10000});
+  assert.match(await page.locator('#mcpServerUrl').inputValue(),/^http:\/\/127\.0\.0\.1:\d+\/mcp$/);
+  assert.equal(await page.locator('#mcpTestMarket').isDisabled(),true,'MCP account test requires a connection.');
+  await page.locator('#mcpConnectLocal').click();
+  await page.waitForFunction(()=>document.getElementById('mcpRemoteStatus')?.textContent?.includes('Aplikasi terhubung'),null,{timeout:10000});
+  assert.equal(await page.locator('#mcpOpenChart').isEnabled(),true,'Connected MCP must enable remote market controls.');
+  await page.locator('#mcpRevealKey').click();
+  await page.waitForFunction(()=>document.getElementById('mcpServerKey')?.value?.length>=40);
+  assert.equal(await page.locator('#mcpServerKey').getAttribute('type'),'text');
+  await page.locator('#mcpStop').click();
+  await page.waitForFunction(()=>document.getElementById('mcpLocalBadge')?.textContent?.trim()==='OFF',null,{timeout:10000});
+  assert.equal(await page.locator('#mcpOpenChart').isDisabled(),true,'Stopping linked server disconnects app.');
+
   await page.locator('[data-route="settings"]').click();
   assert.equal(await page.locator('#gatewayForm').isVisible(),true);
   await page.locator('[data-route="chart"]').click();
@@ -153,7 +168,7 @@ async function main(){
   await page.locator('#marketProvider').selectOption('BIQUOTE');
   assert.match(await page.locator('#providerBadge').textContent(),/BIQUOTE/);
   if(errors.length)throw Error('UI JavaScript errors: '+errors.join('; ').slice(0,500));
-  console.log('PASS Electron UI smoke: compact TradingView-like chrome, symbol dialog, chart settings, watchlist quotes, right utility rail, collapsible dock, studies, drawing tools, alerts, strategy and six pages and guarded MT5 terminal page.');
+  console.log('PASS Electron UI smoke: compact TradingView-like chrome, symbol dialog, chart settings, watchlist quotes, right utility rail, collapsible dock, studies, drawing tools, alerts, strategy six pages, guarded MT5 ticket, authenticated loopback MCP server and local connection.');
  }finally{if(app)await app.close();}
 }
 main().catch(error=>{console.error('FAIL desktop UI smoke:',error?.message||error);process.exitCode=1;});

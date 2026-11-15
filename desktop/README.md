@@ -155,3 +155,57 @@ The GitHub Actions Electron smoke test checks actual layout elements, modal symb
 - AI Analyst uses MT5 provider candles when explicitly selected but cannot directly execute MT5 trades via MCP. Existing paper trading is separate.
 - GitHub CI tests a mocked broker, not a real MT5 installation. Live MT5 connection and broker execution require a dedicated demo account on the user's Windows device. Do not test this workflow on a live-funded account first.
 - Bridge installation and operational details: mt5_bridge/README.md.
+
+
+## v0.9: Authenticated internal MCP HTTP server with API-key URL connection
+
+MetaTrader 5 does NOT expose a built-in MCP API URL or API key. Its account and
+server entries identify a broker connection, not an MCP endpoint. LUMAVUN
+generates a separate 256-bit random MCP Bearer key on explicit local server
+startup. This is never the MT5 trading password, investor password or login.
+
+### Start a local MCP gateway and connect it to LUMAVUN
+
+1. Install MT5 for Windows with Python 3 x64 and the MetaTrader5 package,
+   and log into a broker demo terminal as described in v0.8.
+2. Open MT5 Trading, scroll to Internal MCP HTTP Gateway.
+3. Click Jalankan Server Internal. The gateway binds only to 127.0.0.1
+   and selects a free port, for example http://127.0.0.1:48239/mcp.
+4. Click Hubungkan Server Lokal to configure LUMAVUN to use that address.
+   Click Tampilkan Key Lokal (or Salin Key) only when a user explicitly
+   needs the generated key for another MCP client. It is held only in RAM
+   and rotates every time the server restarts. It is never stored on disk.
+5. Click Uji Data Akun MCP to test actual broker connectivity. A successful
+   MCP handshake does not prove MT5 terminal connectivity.
+6. Enter an exact broker symbol and click Buka Simbol di Chart MCP, or use
+   MT5 via MCP Server from Symbol Search/watchlist. AI Analyst can analyze
+   MCP provider candles, but cannot send trades.
+
+### Connect a different internal server address
+
+Enter its Streamable HTTP endpoint URL ending in /mcp and a Bearer API key,
+then click Hubungkan URL + Key. LUMAVUN validates MCP initialize and tools/list
+and requires ticker and candles tool names before enabling the MCP provider.
+Only six read-only tool names are recognized; all requests have strict timeouts
+and reject redirects. Plain HTTP is permitted only for loopback addresses.
+LAN or other remote endpoints must use HTTPS with a trusted certificate.
+To expose a separate MT5 server over a LAN, configure an independent secure
+reverse proxy with TLS and a network allowlist; LUMAVUN will NOT expose its
+own built-in server beyond the local machine.
+
+MCP HTTP compatibility: stateless JSON-RPC POST to /mcp for initialize,
+ping, tools/list, tools/call and notifications. JSON replies; not SSE/event
+streaming, OAuth, or stateful MCP sessions. MCP clients that require those
+capabilities may not interoperate. GET /health also needs the Bearer key.
+
+No tool for execute_order, order_send, close_position, filesystem, or shell
+commands is exposed by this gateway. BUY/SELL remains a separate, default
+LOCKED manual trading workflow in the local MT5 page, requiring the account,
+SL/TP, broker check, and separate exact execution confirmation. Connecting
+a remote MCP server does not allow it to execute orders through LUMAVUN.
+
+Node unit tests cover localhost-only binding, Bearer 401, Origin protection,
+key rotation, tool allowlist, unauthorized execution, MCP client handshake,
+HTTPS URL validation, and fake broker quotes. Electron Windows GUI smoke
+checks start/connect/reveal/stop and order-lock state. This testing never
+accesses an actual broker account or places a real trade.

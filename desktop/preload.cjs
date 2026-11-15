@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('lumavun',Object.freeze({
  mcpStatus:()=>ipcRenderer.invoke('lumavun:mcp:status'),
  mcpStart:(port=0)=>ipcRenderer.invoke('lumavun:mcp:start',port),
  mcpRevealKey:()=>ipcRenderer.invoke('lumavun:mcp:reveal-key'),
+ mcpCopyKey:()=>ipcRenderer.invoke('lumavun:mcp:copy-key'),
  mcpStop:()=>ipcRenderer.invoke('lumavun:mcp:stop'),
  mcpConnectLocal:()=>ipcRenderer.invoke('lumavun:mcp:connect-local'),
  mcpConnect:(url,apiKey)=>ipcRenderer.invoke('lumavun:mcp:connect',{url,apiKey}),
