@@ -141,6 +141,7 @@ async function refresh(fit=false){
   byId('chartState').textContent=data.length+' candle valid · REST refresh 45s';
   lastMarket={provider,symbol,price:quote.lastPrice,time:Date.now(),marketOpen:quote.marketOpen};
   renderInsight(data);
+  if(window.LumaWorkspace)window.LumaWorkspace.onCandles(data,quote);
   aiUi.loadedKey=marketAiKey();aiUi.ready=data.length>=60;updateAiButton();
   if(provider==='BINANCE'){
    const closed=paper.mark(account,symbol,quote.lastPrice);
@@ -149,7 +150,7 @@ async function refresh(fit=false){
    renderPaper();
   }
   setStatus('ONLINE','online');
- }catch(e){if(id===requestId){lastMarket=null;aiUi.ready=false;aiUi.loadedKey=null;updateAiButton();resetAiOutput();clearData();showError(e.message||'Provider gagal memuat data.');}}
+ }catch(e){if(id===requestId){lastMarket=null;if(window.LumaWorkspace)window.LumaWorkspace.onMarketError();aiUi.ready=false;aiUi.loadedKey=null;updateAiButton();resetAiOutput();clearData();showError(e.message||'Provider gagal memuat data.');}}
  finally{if(id===requestId)busy=false;}
 }
 document.querySelectorAll('#timeframes button').forEach(b=>b.addEventListener('click',()=>{state.interval=b.dataset.interval;save();renderTimeframes();refresh(true);}));

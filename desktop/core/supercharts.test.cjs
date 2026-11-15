@@ -1,0 +1,7 @@
+const test=require('node:test'),assert=require('node:assert/strict');
+const {sma,bollinger,vwap,ema,backtest}=require('./supercharts.cjs');
+test('SMA and EMA use initial-period seed',()=>{assert.deepEqual(sma([1,2,3,4],2),[null,1.5,2.5,3.5]);assert.deepEqual(ema([1,2,3,4,5],3),[null,null,2,3,4]);});
+test('Bollinger bands narrow on flat candles',()=>{const b=bollinger(Array(25).fill(100),20,2);assert.equal(b.middle.at(-1),100);assert.equal(b.upper.at(-1),100);assert.equal(b.lower.at(-1),100);});
+test('VWAP uses actual volume not fabricated price',()=>{const data=[{high:12,low:8,close:10,volume:2},{high:22,low:18,close:20,volume:1}];assert.deepEqual(vwap(data),[10,40/3]);});
+test('Backtest rejects invalid inputs and makes no trades on monotonically rising prices',()=>{const data=Array.from({length:80},(_,i)=>({close:100+i}));assert.equal(backtest(data).trades,0);assert.throws(()=>backtest([],{}),/bars/);assert.throws(()=>backtest(data,{fast:25,slow:21}),/strategy/);});
+test('Backtest reports closed trades, fees and drawdown on crossed trend',()=>{const prices=[...Array.from({length:40},(_,i)=>100+i),...Array.from({length:40},(_,i)=>140-i*1.5),...Array.from({length:40},(_,i)=>80+i*2)];const r=backtest(prices.map(close=>({close})),{fast:4,slow:10,feeBps:10});assert.ok(r.trades>=1);assert.ok(Number.isFinite(r.final));assert.ok(r.maxDrawdown>=0);assert.equal(r.history.length,r.trades);});

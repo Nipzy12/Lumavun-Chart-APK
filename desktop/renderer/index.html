@@ -10,7 +10,7 @@
 <body>
 <div class="app">
 <header class="topbar">
- <div class="brand"><span class="moon"></span><div><strong>LUMAVUN</strong><small>CHART DESKTOP · PREVIEW 0.5</small></div></div>
+ <div class="brand"><span class="moon"></span><div><strong>LUMAVUN</strong><small>CHART DESKTOP · SUPERVIEW 0.6</small></div></div>
  <div class="topright"><span class="eyebrow">SOURCE</span><span id="providerBadge" class="provider">BINANCE SPOT</span><span id="status" class="status">READY</span></div>
 </header>
 
@@ -23,7 +23,8 @@
 </nav>
 <div class="workspace">
  <aside class="sidebar">
-  <div class="section-heading"><span>WATCHLIST</span><span id="watchCount">0 PAIRS</span></div>
+  <div class="tvWatchHead"><strong>Watchlist</strong><span class="tvWlControls"><span id="watchCount">0 PAIRS</span><button id="tvSortWatchlist" type="button" title="Sort watchlist A-Z">⇅</button></span></div>
+<div class="tvWatchColumns"><span>Symbol</span><span>Provider</span></div>
   <label class="minorLabel" for="marketProvider">MARKET PROVIDER</label>
   <select id="marketProvider" class="textField">
    <option value="BINANCE">Binance Spot</option><option value="BIQUOTE">BiQuote</option><option value="EXNESS">Exness Gateway</option>
@@ -33,42 +34,111 @@
    <button type="submit" title="Validasi dan tambahkan pair">+</button>
   </form>
   <div id="watchlist" class="watchlist"></div>
-  <div class="asidefoot"><span class="tiny-dot"></span> Data provider asli. Jika feed gagal, harga tidak diganti dengan simulasi.</div>
+  <div class="tvSideQuote"><div class="tvSideTitle">MARKET DETAILS <span id="tvDetailsSymbol">BTCUSDT</span></div><dl><div><dt>24h change</dt><dd id="tvSideChange">—</dd></div><div><dt>High</dt><dd id="tvSideHigh">—</dd></div><div><dt>Low</dt><dd id="tvSideLow">—</dd></div><div><dt>Volume</dt><dd id="tvSideVolume">—</dd></div></dl></div>
+<div class="asidefoot"><span class="tiny-dot"></span> Actual provider quotes; no fallback prices. Market tools are independent of TradingView services.</div>
  </aside>
  <main class="main">
- <section id="page-chart" class="routePage" data-page="chart">
-  <div class="symbolbar">
-   <div><span class="label">MARKET OVERVIEW</span><h1 id="pairTitle">BTC / USDT</h1><div id="lastUpdate" class="muted">Belum memuat data</div></div>
-   <div class="pricearea"><div id="lastPrice" class="price">—</div><span id="priceChange" class="change">—</span></div>
-  </div>
-  <div class="toolbar">
-   <div id="timeframes" class="timeframes" role="group" aria-label="Timeframe">
-    <button data-interval="1m">1m</button><button data-interval="5m">5m</button><button data-interval="15m">15m</button>
-    <button data-interval="30m">30m</button><button data-interval="1h">1H</button><button data-interval="4h">4H</button><button data-interval="1d">1D</button>
+ <section id="page-chart" class="routePage tvPage" data-page="chart">
+ <div id="tvWorkspace" class="tvWorkspace">
+  <div class="tvTopTools">
+   <button id="tvSymbolOpen" class="tvSymbolButton" type="button" title="Cari simbol">◈ <span id="tvSymbolLabel">BTCUSDT</span> <span class="tvChevron">⌄</span></button>
+   <span class="tvSep"></span>
+   <div id="timeframes" class="timeframes tvFrames" role="group" aria-label="Timeframe">
+    <button data-interval="1m">1m</button><button data-interval="5m">5m</button><button data-interval="15m">15m</button><button data-interval="30m">30m</button><button data-interval="1h">1H</button><button data-interval="4h">4H</button><button data-interval="1d">1D</button>
    </div>
-   <div class="tools"><label><input id="toggleEma20" type="checkbox" checked>EMA 20</label><label><input id="toggleEma50" type="checkbox" checked>EMA 50</label><button id="refresh" class="refresh" type="button">↻ Refresh</button></div>
+   <span class="tvSep"></span>
+   <select id="tvChartType" class="tvFlatSelect" aria-label="Jenis grafik"><option value="candles">Candles</option><option value="line">Line</option><option value="area">Area</option></select>
+   <button id="tvIndicatorsOpen" class="tvTextTool" type="button">☷ Indicators</button>
+   <button id="tvCompareOpen" class="tvTextTool" type="button">＋ Compare</button>
+   <button id="tvCreateAlert" class="tvTextTool" type="button">♧ Alert</button>
+   <span class="tvToolFlex"></span>
+   <button id="tvUndo" class="tvIconTool" type="button" title="Undo drawing (Ctrl+Z)">↶</button>
+   <button id="tvRedo" class="tvIconTool" type="button" title="Redo drawing (Ctrl+Y)">↷</button>
+   <button id="refresh" class="tvIconTool" type="button" title="Refresh real market data">⟳</button>
+   <button id="tvTheme" class="tvIconTool" type="button" title="Toggle light/dark chart theme">◐</button>
+   <button id="tvCapture" class="tvIconTool" type="button" title="Save chart PNG">▣</button>
+   <button id="tvFullscreen" class="tvIconTool" type="button" title="Fullscreen chart workspace">⛶</button>
+   <button id="tvSaveLayout" class="tvSaveTool" type="button">Save layout</button>
   </div>
-  <section class="chartcard">
-   <div class="chartheading"><span id="chartLabel">BTCUSDT · 15m</span><span id="chartState" class="muted">Memuat grafik…</span></div>
-   <div id="chart" class="chart" role="img" aria-label="Grafik candlestick dari provider aktif"></div>
-   <div id="error" class="error" role="alert" hidden></div>
-  </section>
-  <section class="stats">
-   <article class="stat"><span>RSI 14</span><strong id="rsiValue">—</strong><small>Wilder</small></article>
-   <article class="stat"><span>EMA 20</span><strong id="ema20Value">—</strong><small>Trend cepat</small></article>
-   <article class="stat"><span>EMA 50</span><strong id="ema50Value">—</strong><small>Trend menengah</small></article>
-   <article class="stat"><span>SUPPORT</span><strong id="supportValue">—</strong><small>Fractal pivot</small></article>
-   <article class="stat"><span>RESISTANCE</span><strong id="resistanceValue">—</strong><small>Fractal pivot</small></article>
-  </section>
-  <div class="detailgrid">
-<section class="detailCard">
-    <div class="detailHeader"><span>TECHNICAL INSIGHT</span><span class="miniTag">LOCAL ENGINE · NOT LLM</span></div>
-    <div class="insightState" id="insightState">MENUNGGU DATA</div>
-    <p id="insightSummary">Analisis lokal dihitung dari OHLC asli setelah feed terhubung.</p>
-    <ul id="insightDetails"></ul>
-   </section>
+  <div id="tvStudyMenu" class="tvPopover" hidden>
+   <strong>Technical indicators</strong><p>Calculated from actual loaded OHLC, not a pre-generated signal.</p>
+   <label><input id="toggleEma20" type="checkbox" checked> EMA 20</label>
+   <label><input id="toggleEma50" type="checkbox" checked> EMA 50</label>
+   <label><input data-study="sma200" type="checkbox"> SMA 200</label>
+   <label><input data-study="bollinger" type="checkbox"> Bollinger Bands 20/2</label>
+   <label><input data-study="vwap" type="checkbox"> VWAP (loaded bars)</label>
+   <label><input data-study="volume" type="checkbox" checked> Volume histogram</label>
   </div>
-
+  <div id="tvCompareMenu" class="tvPopover" hidden>
+   <strong>Compare symbols</strong><p>Overlay Binance USDT spot symbol, indexed % change from first shared bar.</p>
+   <form id="tvCompareForm"><input id="tvCompareInput" class="textField" placeholder="ETHUSDT" maxlength="20" autocomplete="off"><button type="submit">Add</button></form>
+   <div id="tvCompareActive" class="tvCompareActive"></div>
+  </div>
+  <div class="tvChartColumns">
+   <div class="tvDrawRail" aria-label="Drawing tools">
+    <button type="button" class="tvDrawButton active" data-draw="cursor" title="Cursor">⌖</button>
+    <button type="button" class="tvDrawButton" data-draw="trend" title="Trend line: select two candles">╱</button>
+    <button type="button" class="tvDrawButton" data-draw="horizontal" title="Horizontal price line">━</button>
+    <button type="button" class="tvDrawButton" data-draw="fib" title="Fibonacci retracement: two candle points">≋</button>
+    <button type="button" class="tvDrawButton" data-draw="note" title="Text annotation at price">T</button>
+    <span class="tvRailSep"></span>
+    <button id="tvClearDrawings" type="button" class="tvDrawButton" title="Clear all chart drawings">⌫</button>
+    <button id="tvToggleRight" type="button" class="tvDrawButton" title="Toggle watchlist panel">▤</button>
+   </div>
+   <div class="tvChartSurface">
+    <div class="tvMarketStrip">
+     <div class="tvMarketSymbol"><span class="tvMarketIcon">◈</span><div><h1 id="pairTitle">BTC / USDT</h1><span id="chartLabel">BINANCE · BTCUSDT · 15m</span></div></div>
+     <div class="tvOhlcValues">
+      <span>O <b id="tvOpen">—</b></span><span>H <b id="tvHigh">—</b></span><span>L <b id="tvLow">—</b></span><span>C <b id="tvClose">—</b></span>
+     </div>
+     <div class="tvLiveQuote"><strong id="lastPrice">—</strong><span id="priceChange">—</span></div>
+     <button id="tvFavorite" class="tvIconTool" title="Favorite current market" type="button">☆</button>
+    </div>
+    <div class="tvChartCard chartcard">
+     <div class="tvChartAbove"><span id="tvDrawHint">Cursor · select another drawing tool on the left</span><span id="chartState" class="muted">Loading candles…</span></div>
+     <div id="chart" class="chart" role="img" aria-label="Candlestick chart with real OHLC and interactive drawings"></div>
+     <div id="error" class="error" role="alert" hidden></div>
+    </div>
+    <div class="tvChartRange">
+     <div id="tvRanges" role="group" aria-label="Visible history">
+      <button data-bars="24">24 bars</button><button data-bars="75">75</button><button data-bars="150">150</button><button data-bars="all" class="active">All loaded</button>
+     </div>
+     <div class="tvRangeMeta"><span id="lastUpdate">Waiting for market data</span><span>UTC · <span id="tvCrosshairDate">—</span></span></div>
+    </div>
+    <div class="tvDock">
+     <div class="tvDockTabs" role="tablist" aria-label="Chart panels">
+      <button type="button" class="active" data-dock="overview">Market overview</button>
+      <button type="button" data-dock="objects">Object tree</button>
+      <button type="button" data-dock="alerts">Alerts</button>
+      <button type="button" data-dock="strategy">Strategy tester</button>
+      <button type="button" data-dock="notes">Notes</button>
+     </div>
+     <div class="tvDockPane" data-dock-pane="overview">
+      <div class="tvSummaryGrid">
+       <div class="tvMetric"><small>RSI (14)</small><strong id="rsiValue">—</strong></div>
+       <div class="tvMetric"><small>EMA (20)</small><strong id="ema20Value">—</strong></div>
+       <div class="tvMetric"><small>EMA (50)</small><strong id="ema50Value">—</strong></div>
+       <div class="tvMetric"><small>Support</small><strong id="supportValue">—</strong></div>
+       <div class="tvMetric"><small>Resistance</small><strong id="resistanceValue">—</strong></div>
+      </div>
+      <div class="tvInsightInline"><strong id="insightState">WAITING FOR DATA</strong><p id="insightSummary">Local technical insight is calculated from actual candles.</p><ul id="insightDetails"></ul></div>
+     </div>
+     <div class="tvDockPane" data-dock-pane="objects" hidden><div id="tvObjects" class="tvObjectTree">No drawings yet. Pick a tool on the left and click the chart.</div></div>
+     <div class="tvDockPane" data-dock-pane="alerts" hidden>
+      <p>Price threshold alerts are checked only while this application is open and the selected pair is refreshed. No background push notifications.</p>
+      <form id="tvAlertForm" class="tvInlineForm"><select id="tvAlertCondition" aria-label="Price alert condition"><option value="above">Price ≥</option><option value="below">Price ≤</option></select><input id="tvAlertPrice" aria-label="Target price" type="number" required step="any" min="0.00000001" placeholder="Price target"><button type="submit">Create alert</button></form>
+      <div id="tvAlerts"></div>
+     </div>
+     <div class="tvDockPane" data-dock-pane="strategy" hidden>
+      <p><strong>EMA 9/21 crossover</strong> · historical close-only, long/flat spot simulation. Uses current loaded candles, 0.1% fee per side, no spread/slippage or live execution.</p>
+      <button type="button" id="tvBacktest" class="tvBlueButton">Run strategy on loaded bars</button><div id="tvBacktestResult" class="tvBacktestResult"></div>
+     </div>
+     <div class="tvDockPane" data-dock-pane="notes" hidden><label for="tvNotes">Workspace notes (saved locally per symbol)</label><textarea id="tvNotes" rows="5" placeholder="Trading plan, journal, or script ideas. Pine Script execution is not supported."></textarea></div>
+    </div>
+   </div>
+  </div>
+ </div>
+ <div id="tvToast" role="status" aria-live="polite" hidden></div>
 </section>
 <section id="page-paper" class="routePage" data-page="paper" hidden>
  <div class="pageIntro"><span class="label">SIMULATED TRADING</span><h1>Paper Trading</h1><p>Posisi virtual tidak mengirim order ke broker. Harga dan evaluasi SL/TP berdasarkan feed Binance yang tersedia.</p></div>
@@ -184,7 +254,7 @@
 
  <div class="settingsHint"><strong>Data &amp; privacy</strong><p>Token Exness dan API key model hanya disimpan selama aplikasi terbuka. Watchlist dan akun paper trading tersimpan lokal. Pengaturan instalasi model tetap berada di Ollama Windows.</p></div>
 </section>
-  <footer>DESKTOP PREVIEW v0.5 · Data market read-only · AI Analyst & Vision on-demand, tanpa auto-bot atau eksekusi order broker.</footer>
+  <footer>DESKTOP PREVIEW v0.6 · Data market read-only · AI Analyst & Vision on-demand, tanpa auto-bot atau eksekusi order broker.</footer>
  </main>
 </div>
 </div>
@@ -192,6 +262,8 @@
 <script src="../core/indicators.js"></script>
 <script src="../core/insight.js"></script>
 <script src="../core/paper.js"></script>
+<script src="../core/supercharts.cjs"></script>
 <script src="./app.js"></script>
+<script src="./workspace.js"></script>
 </body>
 </html>

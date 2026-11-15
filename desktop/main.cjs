@@ -1,8 +1,10 @@
 'use strict';
-const {app,BrowserWindow,ipcMain} = require('electron');
+const {app,BrowserWindow,ipcMain,dialog} = require('electron');
+const fs=require('node:fs/promises');
 const path=require('node:path');
 const market=require('./core/market.cjs');
 const ai=require('./core/ai-analyst.cjs');
+const vision=require('./core/vision.cjs');
 const {LocalAiManager}=require('./core/local-ai-manager.cjs');
 const hosts=['https://api.binance.com','https://api1.binance.com','https://data-api.binance.vision'];
 let gateway={url:'',token:'',symbols:[]};
@@ -145,6 +147,19 @@ ipcMain.handle('lumavun:local-ai:install-runtime',()=>localAiManager.installRunt
 ipcMain.handle('lumavun:local-ai:start-runtime',()=>localAiManager.startRuntime());
 ipcMain.handle('lumavun:local-ai:pull-model',(_event,model)=>localAiManager.pullModel(model));
 ipcMain.handle('lumavun:local-ai:cancel-download',()=>localAiManager.cancelDownload());
+
+ipcMain.handle('lumavun:chart:save-png',async (_event,dataUrl)=>{
+ const image=vision.validateChartPng(dataUrl);
+ const result=await dialog.showSaveDialog({
+  title:'Save LUMAVUN chart image',
+  defaultPath:'LUMAVUN-Chart-'+new Date().toISOString().slice(0,10)+'.png',
+  filters:[{name:'PNG Image',extensions:['png']}],
+  properties:['showOverwriteConfirmation']
+ });
+ if(result.canceled||!result.filePath)return {saved:false};
+ await fs.writeFile(result.filePath,Buffer.from(image.base64,'base64'));
+ return {saved:true,fileName:path.basename(result.filePath)};
+});
 
 app.whenReady().then(()=>{
  app.setAppUserModelId('com.lumavun.chart.desktop');
