@@ -1140,196 +1140,93 @@ private fun SearchSymbolResultRow(
     onToggleFavorite: () -> Unit,
     onToggleWatchlist: () -> Unit
 ) {
-    val compactLayout = LocalConfiguration.current.screenWidthDp < 390
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 60.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .border(
-                1.dp,
-                if (inWatchlist) CyanAccent.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.45f),
-                RoundedCornerShape(10.dp)
-            )
-            .clickable { onSelectPair() }
-            .padding(horizontal = 12.dp, vertical = 10.dp)
+        modifier = Modifier.fillMaxWidth().heightIn(min = 73.dp)
+            .clickable(onClick = onSelectPair)
+            .padding(horizontal = 7.dp, vertical = 10.dp)
             .testTag("search_result_${item.symbol}"),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(11.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left Area: Symbol + Market / Trading Status
+        InstrumentIdentityMark(symbol = item.symbol, category = item.category)
         Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(end = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                MarketStatusLedDot(
-                    status = marketStatus,
-                    dotSize = 7.dp,
-                    testTag = "search_led_${item.symbol}"
-                )
                 Text(
-                    text = formatSymbolPair(item.symbol, item.category),
-                    style = MaterialTheme.typography.titleMedium,
+                    text = item.symbol.uppercase(Locale.US),
+                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
-                    softWrap = false,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
                 )
-                Surface(
-                    color = CyanAccent.copy(alpha = 0.14f),
-                    shape = RoundedCornerShape(4.dp)
-                ) {
-                    Text(
-                        text = item.category.shortBadge,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = CyanAccent,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        softWrap = false,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                    )
-                }
-                if (inWatchlist) {
-                    Surface(
-                        color = BullishGreenSoft,
-                        shape = RoundedCornerShape(4.dp),
-                        modifier = Modifier.widthIn(min = 44.dp)
-                    ) {
-                        Text(
-                            text = "SAVED",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = BullishGreen,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                            maxLines = 1,
-                            softWrap = false,
-                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
-                        )
-                    }
-                }
-            }
-            val subText = when {
-                !item.status.equals("TRADING", true) -> "Reference only · Tap Add to verify · ${item.provider.displayLabel}"
-                liveTicker != null && liveTicker.quoteVolume > 0.0 ->
-                    "Vol $${formatCompactVolume(liveTicker.quoteVolume)} · ${item.provider.displayLabel}"
-                item.displayName.isNotBlank() ->
-                    "${item.displayName} · ${item.provider.displayLabel}"
-                else ->
-                    "${item.symbol} · ${item.provider.displayLabel} · ${item.status}"
+                MarketStatusLedDot(
+                    status = marketStatus, dotSize = 5.dp,
+                    testTag = "search_led_${item.symbol}"
+                )
             }
             Text(
-                text = subText,
-                style = MaterialTheme.typography.bodySmall,
+                text = item.displayName.ifBlank { item.category.label },
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
-                softWrap = false,
                 overflow = TextOverflow.Ellipsis
             )
         }
-
-        // Right Area: Live Price, 24h Change% (when available), Favorite & Add/Remove Action
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
-            if (!compactLayout && liveTicker != null && liveTicker.lastPrice > 0.0) {
-                val isUp = liveTicker.priceChangePercent >= 0.0
-                val changeCol = if (isUp) BullishGreen else BearishRed
-                val changeBg = if (isUp) BullishGreenSoft else BearishRedSoft
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Text(
-                        text = formatPriceWithPrefix(liveTicker.lastPrice, item.symbol, item.category),
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            fontFamily = JetBrainsMonoFontFamily
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        softWrap = false
-                    )
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(changeBg)
-                            .padding(horizontal = 5.dp, vertical = 1.dp)
-                    ) {
-                        Text(
-                            text = "${if (isUp) "+" else ""}${String.format(Locale.US, "%.2f", liveTicker.priceChangePercent)}%",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontFamily = JetBrainsMonoFontFamily
-                            ),
-                            color = changeCol,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            softWrap = false
-                        )
-                    }
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .size(30.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .clickable { onToggleFavorite() }
-                    .testTag("search_fav_${item.symbol}"),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
-                    contentDescription = "Favorite Pair",
-                    tint = if (isFavorite) NeutralAmber else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-
-            Surface(
-                color = if (inWatchlist) BullishGreenSoft else CyanAccent.copy(alpha = 0.18f),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier
-                    .border(
-                        1.dp,
-                        if (inWatchlist) BullishGreen.copy(alpha = 0.6f) else CyanAccent.copy(alpha = 0.7f),
-                        RoundedCornerShape(8.dp)
-                    )
-                    .clickable { onToggleWatchlist() }
-                    .testTag("toggle_watchlist_${item.symbol}")
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(3.dp)
-                ) {
-                    Icon(
-                        imageVector = if (inWatchlist) Icons.Default.Check else Icons.Default.Add,
-                        contentDescription = if (inWatchlist) "In Watchlist" else "Add to Watchlist",
-                        tint = if (inWatchlist) BullishGreen else CyanAccent,
-                        modifier = Modifier.size(15.dp)
-                    )
-                    Text(
-                        text = if (inWatchlist) "Added" else "Add",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (inWatchlist) BullishGreen else CyanAccent,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        softWrap = false
-                    )
-                }
-            }
+            Text(
+                text = item.provider.displayLabel,
+                style = MaterialTheme.typography.labelLarge.copy(fontSize = 12.sp),
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1
+            )
+            Text(
+                text = if (item.status.equals("TRADING", true))
+                    item.category.label else "Perlu verifikasi",
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                color = if (item.status.equals("TRADING", true))
+                    MaterialTheme.colorScheme.onSurfaceVariant else NeutralAmber,
+                maxLines = 1
+            )
+        }
+        IconButton(
+            onClick = onToggleFavorite,
+            modifier = Modifier.size(26.dp).testTag("search_fav_${item.symbol}")
+        ) {
+            Icon(
+                imageVector = if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                contentDescription = if (isFavorite) "Hapus favorit" else "Favoritkan simbol",
+                tint = if (isFavorite) NeutralAmber
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f),
+                modifier = Modifier.size(17.dp)
+            )
+        }
+        IconButton(
+            onClick = onToggleWatchlist,
+            modifier = Modifier.size(32.dp).testTag("toggle_watchlist_${item.symbol}")
+        ) {
+            Icon(
+                imageVector = if (inWatchlist) Icons.Default.Check else Icons.Default.Add,
+                contentDescription = if (inWatchlist) "Hapus dari Daftar Pantau" else "Tambah ke Daftar Pantau",
+                tint = if (inWatchlist) BullishGreen else CyanAccent,
+                modifier = Modifier.size(24.dp)
+            )
         }
     }
+    HorizontalDivider(
+        thickness = 0.5.dp,
+        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.22f)
+    )
 }
 
 /**
