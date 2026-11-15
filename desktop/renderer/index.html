@@ -17,6 +17,7 @@
  <button type="button" data-route="ai" class="navTab"><svg class="tvIcon" aria-hidden="true"><use href="#li-brain"/></svg> AI Analyst</button>
  <button type="button" data-route="models" class="navTab"><svg class="tvIcon" aria-hidden="true"><use href="#li-cpu"/></svg> AI Models</button>
  <button type="button" data-route="paper" class="navTab"><svg class="tvIcon" aria-hidden="true"><use href="#li-wallet"/></svg> Paper</button>
+ <button type="button" data-route="mt5" class="navTab"><svg class="tvIcon" aria-hidden="true"><use href="#li-chart"/></svg> MT5 Trading</button>
  <button type="button" data-route="settings" class="navTab"><svg class="tvIcon" aria-hidden="true"><use href="#li-settings"/></svg> Settings</button>
 </nav>
  <div class="topright"><span class="eyebrow">SOURCE</span><span id="providerBadge" class="provider">BINANCE SPOT</span><span id="status" class="status">READY</span></div>
@@ -28,7 +29,7 @@
  <div class="tvWatchColumns"><span>Symbol</span><span>Last</span><span>Chg%</span></div>
   <label class="minorLabel" for="marketProvider">MARKET PROVIDER</label>
   <select id="marketProvider" class="textField">
-   <option value="BINANCE">Binance Spot</option><option value="BIQUOTE">BiQuote</option><option value="EXNESS">Exness Gateway</option>
+   <option value="BINANCE">Binance Spot</option><option value="BIQUOTE">BiQuote</option><option value="EXNESS">Exness Gateway</option><option value="MT5">MT5 Local Terminal</option>
   </select>
   <form id="searchForm" class="searchForm">
    <input id="symbolInput" aria-label="Cari simbol pada provider terpilih" autocomplete="off" spellcheck="false" placeholder="BTCUSDT / XAUUSD" maxlength="20">
@@ -45,6 +46,7 @@
   <span class="tvRightRailGap"></span>
   <button id="tvRailAi" type="button" title="AI Analyst"><svg class="tvIcon" aria-hidden="true"><use href="#li-brain"/></svg></button>
   <button id="tvRailPaper" type="button" title="Paper trading"><svg class="tvIcon" aria-hidden="true"><use href="#li-wallet"/></svg></button>
+  <button id="tvRailMt5" type="button" title="MetaTrader 5 trading terminal"><svg class="tvIcon" aria-hidden="true"><use href="#li-chart"/></svg></button>
   <button id="tvRailModels" type="button" title="Install local AI models"><svg class="tvIcon" aria-hidden="true"><use href="#li-cpu"/></svg></button>
   <button id="tvRailSettings" type="button" title="Application settings"><svg class="tvIcon" aria-hidden="true"><use href="#li-settings"/></svg></button>
  </aside>
@@ -260,6 +262,75 @@
  </div>
  <p class="modelNote">Instalasi runtime melalui WinGet menggunakan paket Ollama.Ollama. Model diunduh melalui API lokal Ollama. Penyimpanan dan penggunaan RAM mengikuti model serta perangkatmu. Aplikasi tidak memasang model tanpa tindakanmu.</p>
 </section>
+
+<section id="page-mt5" class="routePage mt5Page" data-page="mt5" hidden>
+ <div class="pageIntro">
+  <span class="label">LOCAL METATRADER 5 TERMINAL</span>
+  <h1>MT5 Live Trading</h1>
+  <p>Harga, candlestick, dan posisi langsung dari terminal MT5 yang sedang login. Order hanya dapat dikirim secara manual setelah pemeriksaan broker dan konfirmasi akun.</p>
+ </div>
+ <div class="mt5ConnectBar">
+  <div>
+   <strong id="mt5ConnectionTitle">Terminal belum terhubung</strong>
+   <p id="mt5ConnectionInfo">Memerlukan MT5 Windows yang aktif, Python 3 x64, dan paket MetaTrader5.</p>
+  </div>
+  <div class="mt5ButtonRow">
+   <button id="mt5Connect" type="button" class="tvBlueButton">Connect MT5</button>
+   <button id="mt5Refresh" type="button" class="subtleButton">Refresh Account &amp; Positions</button>
+   <button id="mt5OpenChart" type="button" class="subtleButton">Open Symbol in Chart</button>
+  </div>
+ </div>
+ <div class="mt5AccountGrid">
+  <div class="mt5Stat"><span>Account</span><strong id="mt5Account">—</strong></div>
+  <div class="mt5Stat"><span>Environment</span><strong id="mt5Environment">DISCONNECTED</strong></div>
+  <div class="mt5Stat"><span>Broker server</span><strong id="mt5Server">—</strong></div>
+  <div class="mt5Stat"><span>Balance</span><strong id="mt5Balance">—</strong></div>
+  <div class="mt5Stat"><span>Equity</span><strong id="mt5Equity">—</strong></div>
+  <div class="mt5Stat"><span>Free Margin</span><strong id="mt5Margin">—</strong></div>
+ </div>
+ <div class="mt5TradeGrid">
+  <section class="mt5Card">
+   <div class="mt5CardTitle"><h2>Manual Order Ticket</h2><span id="mt5LockBadge">LOCKED</span></div>
+   <p>Trading terkunci secara default. Untuk membuka, ketik persis <code id="mt5UnlockHint">ENABLE DEMO [account]</code>. Akun real memerlukan persetujuan risiko terpisah.</p>
+   <div class="mt5Field"><label for="mt5UnlockPhrase">Account unlock phrase</label><input id="mt5UnlockPhrase" placeholder="ENABLE DEMO 12345678" autocomplete="off"></div>
+   <label class="mt5Check"><input id="mt5AcceptReal" type="checkbox"> Saya memahami bahwa order REAL menggunakan dana sungguhan dan dapat menyebabkan kerugian.</label>
+   <div class="mt5ButtonRow"><button id="mt5Unlock" class="subtleButton" type="button">Unlock Trading</button><button id="mt5Lock" class="subtleButton" type="button">Lock</button></div>
+   <form id="mt5TradeForm" class="mt5OrderForm">
+    <div class="mt5Field"><label for="mt5Symbol">Broker symbol (exact)</label><input id="mt5Symbol" required value="XAUUSD" maxlength="32" autocomplete="off" placeholder="XAUUSD / XAUUSDm"></div>
+    <div class="mt5FieldsTwo">
+     <div class="mt5Field"><label for="mt5Side">Side</label><select id="mt5Side"><option value="BUY">BUY (Ask)</option><option value="SELL">SELL (Bid)</option></select></div>
+     <div class="mt5Field"><label for="mt5Volume">Lot</label><input id="mt5Volume" type="number" min="0.01" max="0.10" step="0.01" required value="0.01"></div>
+    </div>
+    <div class="mt5FieldsTwo">
+     <div class="mt5Field"><label for="mt5SL">Stop Loss (absolute price)</label><input id="mt5SL" type="number" step="any" min="0.0000001" required placeholder="SL price"></div>
+     <div class="mt5Field"><label for="mt5TP">Take Profit (absolute price)</label><input id="mt5TP" type="number" step="any" min="0.0000001" required placeholder="TP price"></div>
+    </div>
+    <button id="mt5Preview" type="submit" class="tvBlueButton" disabled>Check Broker &amp; Preview Order</button>
+   </form>
+   <section id="mt5OrderPreview" class="mt5PreviewBox" hidden>
+    <strong id="mt5PreviewTitle">Order preview</strong>
+    <p id="mt5PreviewText"></p>
+    <label for="mt5ConfirmationPhrase">Type the exact execution phrase</label>
+    <input id="mt5ConfirmationPhrase" autocomplete="off" placeholder="CONFIRM DEMO BUY 12345678">
+    <button id="mt5Execute" type="button" class="mt5Execute" disabled>Execute Confirmed Order</button>
+    <small>Preview expires after 30 seconds; account or price changes require a new preview.</small>
+   </section>
+   <p id="mt5TradeMessage" role="status" aria-live="polite">No order has been sent.</p>
+  </section>
+  <section class="mt5Card">
+   <div class="mt5CardTitle"><h2>Live Positions</h2><button id="mt5RefreshPositions" type="button" class="subtleButton">Refresh</button></div>
+   <p>Posisi dari terminal MT5 (bukan Paper Trading). Fungsi close posisi belum tersedia pada v0.8.</p>
+   <div id="mt5Positions" class="mt5Positions">Connect MT5 to read current positions.</div>
+   <div class="mt5McpPanel">
+    <h3>MT5 MCP Server (read only)</h3>
+    <p>Tool tersedia: account, symbols, ticker, candles, positions, preview_order. AI/MCP tidak dapat mengirim order BUY atau SELL.</p>
+    <label for="mt5McpCommand">Local stdio command</label>
+    <textarea id="mt5McpCommand" rows="3" readonly spellcheck="false"></textarea>
+    <p>Instal dependensi melalui Python x64: <code>py -3 -m pip install MetaTrader5 "mcp&gt;=2,&lt;3"</code>. Jalankan command di konfigurasi MCP client yang mendukung stdio.</p>
+   </div>
+  </section>
+ </div>
+</section>
 <section id="page-settings" class="routePage" data-page="settings" hidden>
  <div class="pageIntro"><span class="label">APPLICATION CONFIGURATION</span><h1>Settings</h1><p>Pengaturan data broker dan preferensi aplikasi desktop.</p></div>
    <details class="gatewayPanel" open><summary>EXNESS GATEWAY</summary>
@@ -276,7 +347,7 @@
 
  <div class="settingsHint"><strong>Data &amp; privacy</strong><p>Token Exness dan API key model hanya disimpan selama aplikasi terbuka. Watchlist dan akun paper trading tersimpan lokal. Pengaturan instalasi model tetap berada di Ollama Windows.</p></div>
 </section>
-  <footer>DESKTOP PREVIEW v0.7 · Data market read-only · AI Analyst & Vision on-demand, tanpa auto-bot atau eksekusi order broker. <span class="tvAttribution">Chart engine: <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">Lightweight Charts™ by TradingView</a></span></footer>
+  <footer>DESKTOP PREVIEW v0.8 · Broker MT5 market data and confirmed manual orders · AI/MCP read-only. <span class="tvAttribution">Chart engine: <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">Lightweight Charts™ by TradingView</a></span></footer>
  </main>
 </div>
 </div>
@@ -292,6 +363,7 @@
   <button data-search-provider="BINANCE" type="button" class="active">Binance</button>
   <button data-search-provider="BIQUOTE" type="button">BiQuote</button>
   <button data-search-provider="EXNESS" type="button">Exness Gateway</button>
+  <button data-search-provider="MT5" type="button">MT5 Terminal</button>
  </div>
  <div class="tvSearchResultsHeading"><span>SYMBOL</span><span>PROVIDER</span></div>
  <div id="tvSearchResults" class="tvSearchResults"></div>
@@ -304,5 +376,6 @@
 <script src="../core/supercharts.js"></script>
 <script src="./app.js"></script>
 <script src="./workspace.js"></script>
+<script src="./mt5.js"></script>
 </body>
 </html>

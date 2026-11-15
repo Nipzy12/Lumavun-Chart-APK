@@ -1,0 +1,3 @@
+MetaTrader5>=5.0.45
+# Optional, for the separate read-only --mcp server:
+mcp>=2,<3

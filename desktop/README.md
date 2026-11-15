@@ -143,3 +143,15 @@ This is a visual and interaction pass targeting actual Supercharts spatial struc
 Functional scope limitations remain: Lightweight Charts is a lower-level charting library; unlike TradingView's licensed Advanced Charts it does **not** ship a Pine Script interpreter, built-in advanced drawing toolbox, broker order tools, library of proprietary indicators, continuous historical replay, social features or cloud syncing. UI similarity does not imply such features exist. Model and broker connections are only validated at runtime when available, with no fake data.
 
 The GitHub Actions Electron smoke test checks actual layout elements, modal symbol search, settings, dock, model and paper pages, and exports a screenshot with explicitly labelled synthetic chart fixtures. No broker orders are placed.
+
+
+## v0.8: Direct local MetaTrader 5 market data, read-only MCP and manual order ticket
+
+- MT5 provider added to chart Symbol Search, watchlist and candlesticks. It reads directly from a locally running, logged-in MetaTrader 5 Windows terminal using the official MetaTrader5 Python integration. Exact broker symbol suffixes are preserved.
+- New MT5 Trading page shows DEMO/REAL account, broker, balance, equity, free margin, broker open positions and a manually gated BUY/SELL order ticket.
+- Initial installation requires Windows x64 MetaTrader 5, Python 3 x64 with the py launcher, and py -3 -m pip install MetaTrader5. The EXE includes Python bridge scripts as an extra resource, not the Python runtime or third-party package.
+- Optional MCP SDK: py -3 -m pip install "mcp>=2,<3". The app shows a local stdio launch command. Tools: account, symbols, ticker, candles, positions and preview_order. The MCP server does NOT expose order_send / execution.
+- Live order safeguards: default LOCKED, explicit environment/account unlock, real-account risk acknowledgment, max 0.10 lot, required absolute SL/TP, broker order_check and margin calculation, 30-second single-use preview, separate confirmation phrase, account binding, quote-movement guard, and zero automatic retries.
+- AI Analyst uses MT5 provider candles when explicitly selected but cannot directly execute MT5 trades via MCP. Existing paper trading is separate.
+- GitHub CI tests a mocked broker, not a real MT5 installation. Live MT5 connection and broker execution require a dedicated demo account on the user's Windows device. Do not test this workflow on a live-funded account first.
+- Bridge installation and operational details: mt5_bridge/README.md.
