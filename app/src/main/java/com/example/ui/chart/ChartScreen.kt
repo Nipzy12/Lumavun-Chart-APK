@@ -365,7 +365,7 @@ fun ChartScreen(
                     .background(CyanAccent.copy(alpha = 0.065f))
                     .clickable { showAnalystPanel = true }
                     .padding(horizontal = 11.dp, vertical = 8.dp)
-                    .testTag("chart_open_ai_insight"),
+                    .testTag("analyst_chart_button"),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
