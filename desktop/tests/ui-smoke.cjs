@@ -15,6 +15,36 @@ async function main(){
   assert.equal(await page.locator('#pageNav button').count(),5);
   assert.equal(await page.locator('#page-ai').isVisible(),false);
   assert.equal(await page.locator('#tvWorkspace').isVisible(),true);
+  assert.equal(await page.locator('.topbar #pageNav').count(),1,'Navigation should live inside desktop titlebar.');
+  assert.equal(await page.locator('#tvRightRail button').count(),7,'Right-side tool rail should be visible.');
+  assert.equal(await page.locator('#tvDock').evaluate(el=>el.classList.contains('collapsed')),true,'Chart should take priority by default.');
+  assert.equal(await page.locator('#tvSidebarResize').count(),1);
+  assert.equal(await page.locator('#tvWatchAdd').count(),1);
+  assert.ok((await page.locator('#watchlist .tvWatchPrice').count())>=1,'Watchlist requires a price column.');
+  const panelTop=await page.locator('.tvWatchHead').evaluate(el=>el.getBoundingClientRect().top);
+  const firstRowTop=await page.locator('#watchlist .watchItem').first().evaluate(el=>el.getBoundingClientRect().top);
+  assert.ok(panelTop>=0&&panelTop<130,'Watchlist header must appear above the fold; top '+panelTop);
+  assert.ok(firstRowTop>=60&&firstRowTop<400,'Watchlist entries must be visible without scrolling; top '+firstRowTop);
+  const chartHeight=await page.locator('#chart').evaluate(el=>el.getBoundingClientRect().height);
+  assert.ok(chartHeight>=300,'Chart must dominate the workspace; height '+chartHeight);
+  await page.locator('#tvSymbolOpen').click();
+  assert.equal(await page.locator('#tvSymbolDialog').evaluate(el=>el.open),true);
+  assert.ok((await page.locator('#tvSearchResults button').count())>=3,'Symbol dialog suggestions expected.');
+  await page.locator('[data-search-provider="BIQUOTE"]').click();
+  await page.locator('#tvSearchQuery').fill('XAU');
+  assert.match(await page.locator('#tvSearchResults').textContent(),/XAUUSD/);
+  await page.locator('#tvSearchClose').click();
+  assert.equal(await page.locator('#tvSymbolDialog').evaluate(el=>el.open),false);
+  await page.locator('#tvSettingsOpen').click();
+  assert.equal(await page.locator('#tvSettingsMenu').isVisible(),true);
+  await page.locator('#tvShowGrid').uncheck();
+  assert.equal(await page.evaluate(()=>chart.options().grid.vertLines.visible),false);
+  await page.locator('#tvShowGrid').check();
+  await page.locator('#tvShowWatermark').check();
+  assert.equal(await page.locator('#tvWatermark').isVisible(),true);
+  await page.locator('#tvShowWatermark').uncheck();
+  await page.locator('#tvSettingsOpen').click();
+  assert.equal(await page.locator('#tvSettingsMenu').isVisible(),false);
   assert.equal(await page.evaluate(()=>typeof window.LumaStudies?.backtest),'function');
   assert.equal(await page.locator('.tvDrawRail [data-draw]').count(),5);
   assert.equal(await page.locator('#tvChartType').count(),1);
@@ -38,6 +68,10 @@ async function main(){
   assert.equal(await page.locator('.sidebar').isVisible(),false);
   await page.locator('#tvToggleRight').click();
   assert.equal(await page.locator('.sidebar').isVisible(),true);
+  await page.locator('#tvRailAlerts').click();
+  assert.equal(await page.locator('[data-dock-pane="alerts"]').isVisible(),true);
+  await page.locator('#tvDockToggle').click();
+  assert.equal(await page.locator('#tvDock').evaluate(el=>el.classList.contains('collapsed')),true);
   await page.locator('#tvCreateAlert').click();
   assert.equal(await page.locator('[data-dock-pane="alerts"]').isVisible(),true);
   await page.locator('#tvAlertPrice').fill('99999');
@@ -46,12 +80,16 @@ async function main(){
   await page.locator('[data-dock="notes"]').click();
   await page.locator('#tvNotes').fill('Windows chart terminal notes.');
   await page.locator('[data-dock="overview"]').click();
+  await page.locator('#tvDockToggle').click();
+  assert.equal(await page.locator('#tvDock').evaluate(el=>el.classList.contains('collapsed')),true);
   assert.match(await page.title(),/LUMAVUN Chart/);
   assert.equal(await page.locator('#aiCapture').count(),1);
   assert.equal(await page.locator('#aiVision').count(),1);
   assert.equal(await page.locator('#aiPreview').isVisible(),false);
   assert.equal(await page.locator('#aiVision').isDisabled(),true);
-  await page.locator('[data-route="ai"]').click();
+  await page.locator('#tvRailAi').click();
+  assert.equal(await page.locator('.workspace').evaluate(el=>el.classList.contains('nonChart')),true);
+  assert.equal(await page.locator('.sidebar').isVisible(),false);
   await page.locator('#aiHeading').waitFor({state:'visible',timeout:15000});
   assert.equal(await page.locator('#page-chart').isVisible(),false);
   assert.ok((await page.locator('#watchlist .watchItem').count())>=1,'Watchlist should render.');
@@ -69,17 +107,32 @@ async function main(){
   await page.locator('[data-route="settings"]').click();
   assert.equal(await page.locator('#gatewayForm').isVisible(),true);
   await page.locator('[data-route="chart"]').click();
+  assert.equal(await page.locator('.workspace').evaluate(el=>el.classList.contains('nonChart')),false);
   assert.equal(await page.locator('#chart').isVisible(),true);
+  // Wait for any initial live feed request before injecting isolated test candles.
+  await page.waitForFunction(()=>{
+   const status=document.getElementById('status')?.textContent?.trim();
+   return status==='ONLINE'||status==='ERROR';
+  },null,{timeout:14000}).catch(()=>{});
   // Offline CI chart fixtures are labelled. These are NOT live trading quotes.
   await page.evaluate(()=>{
    const base=Math.floor(Date.now()/1000)-260*900;
+   const live=Number(document.getElementById('lastPrice').textContent.replace(/,/g,''));
+   const anchor=Number.isFinite(live)&&live>0?live:100;
    const bars=Array.from({length:250},(_,i)=>{
-    const close=100+i*0.19+Math.sin(i/8)*4;
-    return {time:base+i*900,open:close-1,high:close+2,low:close-2,close,volume:50+i};
+    const close=anchor*(.963+i*.00017+Math.sin(i/8)*.0016);
+    return {time:base+i*900,open:close*.9995,high:close*1.0008,low:close*.999,close,volume:50+i};
    });
    candleSeries.setData(bars.map(({time,open,high,low,close})=>({time,open,high,low,close})));
-   window.LumaWorkspace.onCandles(bars,{lastPrice:bars.at(-1).close,priceChangePercent:1.2,highPrice:160,lowPrice:90,volume:123456});
-   const tag=document.createElement('div');tag.id='ciFixtureTag';tag.textContent='CI TEST FIXTURE · NOT LIVE MARKET DATA';
+   fast.setData(bars.slice(20).map(c=>({time:c.time,value:c.close*.998})));
+   slow.setData(bars.slice(50).map(c=>({time:c.time,value:c.close*.995})));
+   window.LumaWorkspace.onCandles(bars,{lastPrice:bars.at(-1).close,priceChangePercent:1.2,
+    highPrice:Math.max(...bars.map(c=>c.high)),lowPrice:Math.min(...bars.map(c=>c.low)),volume:123456});
+   document.getElementById('lastPrice').textContent=bars.at(-1).close.toLocaleString('en-US',{maximumFractionDigits:2});
+   document.getElementById('priceChange').textContent='+1.20% CI FIXTURE';
+   document.querySelector('.tvTopTools').scrollLeft=0;
+   const toast=document.getElementById('tvToast');if(toast)toast.hidden=true;
+   const tag=document.createElement('div');tag.id='ciFixtureTag';tag.textContent='UI TEST CANDLES · NOT LIVE MARKET DATA';
    tag.style.cssText='position:absolute;right:14px;top:37px;z-index:9;padding:4px 9px;background:#573d1e;color:#ffd58d;font-size:10px';
    document.querySelector('.tvChartCard').append(tag);
   });
@@ -87,12 +140,13 @@ async function main(){
   await page.locator('#tvBacktest').click();
   assert.ok((await page.locator('.tvBacktestMetric').count())>=5,'Strategy metrics should be rendered from test candles.');
   await page.locator('[data-dock="overview"]').click();
+  await page.locator('#tvDockToggle').click();
   fs.mkdirSync(path.join(root,'artifacts'),{recursive:true});
   await page.screenshot({path:path.join(root,'artifacts','desktop-ui-smoke.png'),fullPage:true});
   await page.locator('#marketProvider').selectOption('BIQUOTE');
   assert.match(await page.locator('#providerBadge').textContent(),/BIQUOTE/);
   if(errors.length)throw Error('UI JavaScript errors: '+errors.join('; ').slice(0,500));
-  console.log('PASS Electron UI smoke: Superview toolbar, indicators, theme, drawing tools, notes, alert, EMA tester, five-page navigation, AI and chart canvas.');
+  console.log('PASS Electron UI smoke: compact TradingView-like chrome, symbol dialog, chart settings, watchlist quotes, right utility rail, collapsible dock, studies, drawing tools, alerts, strategy and five pages.');
  }finally{if(app)await app.close();}
 }
 main().catch(error=>{console.error('FAIL desktop UI smoke:',error?.message||error);process.exitCode=1;});
