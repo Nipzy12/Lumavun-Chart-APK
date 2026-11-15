@@ -12,11 +12,11 @@ async function main(){
   const errors=[];
   page.on('pageerror',error=>errors.push(error.message));
   await page.locator('#page-chart').waitFor({state:'visible',timeout:30000});
-  assert.equal(await page.locator('#pageNav button').count(),5);
+  assert.equal(await page.locator('#pageNav button').count(),6);
   assert.equal(await page.locator('#page-ai').isVisible(),false);
   assert.equal(await page.locator('#tvWorkspace').isVisible(),true);
   assert.equal(await page.locator('.topbar #pageNav').count(),1,'Navigation should live inside desktop titlebar.');
-  assert.equal(await page.locator('#tvRightRail button').count(),7,'Right-side tool rail should be visible.');
+  assert.equal(await page.locator('#tvRightRail button').count(),8,'Right-side tool rail should be visible.');
   assert.equal(await page.locator('#tvDock').evaluate(el=>el.classList.contains('collapsed')),true,'Chart should take priority by default.');
   assert.equal(await page.locator('#tvSidebarResize').count(),1);
   assert.equal(await page.locator('#tvWatchAdd').count(),1);
@@ -104,6 +104,13 @@ async function main(){
   assert.equal(await page.locator('#localRuntimeStart').count(),1);
   await page.locator('[data-route="paper"]').click();
   assert.equal(await page.locator('#paperForm').isVisible(),true);
+  await page.locator('[data-route="mt5"]').click();
+  assert.equal(await page.locator('#page-mt5').isVisible(),true);
+  assert.equal(await page.locator('#mt5Preview').isDisabled(),true,'Live trading locked by default.');
+  assert.equal(await page.locator('#mt5OrderPreview').isVisible(),false);
+  assert.equal(await page.locator('#mt5Execute').isDisabled(),true);
+  await page.locator('#mt5McpCommand').waitFor({state:'visible'});
+  assert.match(await page.locator('#mt5McpCommand').inputValue(),/bridge\.py.*--mcp/);
   await page.locator('[data-route="settings"]').click();
   assert.equal(await page.locator('#gatewayForm').isVisible(),true);
   await page.locator('[data-route="chart"]').click();
@@ -146,7 +153,7 @@ async function main(){
   await page.locator('#marketProvider').selectOption('BIQUOTE');
   assert.match(await page.locator('#providerBadge').textContent(),/BIQUOTE/);
   if(errors.length)throw Error('UI JavaScript errors: '+errors.join('; ').slice(0,500));
-  console.log('PASS Electron UI smoke: compact TradingView-like chrome, symbol dialog, chart settings, watchlist quotes, right utility rail, collapsible dock, studies, drawing tools, alerts, strategy and five pages.');
+  console.log('PASS Electron UI smoke: compact TradingView-like chrome, symbol dialog, chart settings, watchlist quotes, right utility rail, collapsible dock, studies, drawing tools, alerts, strategy and six pages and guarded MT5 terminal page.');
  }finally{if(app)await app.close();}
 }
 main().catch(error=>{console.error('FAIL desktop UI smoke:',error?.message||error);process.exitCode=1;});

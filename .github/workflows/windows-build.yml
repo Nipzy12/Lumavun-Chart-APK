@@ -28,12 +28,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Syntax validation
         run: npm run check:syntax
       - name: Test market, trading and AI utilities
         run: npm test
+      - name: Test MT5 bridge with mocked broker API
+        run: python -m unittest discover -s mt5_bridge/tests -p "test_*.py" -v
       - name: Electron window smoke test
         run: npm run test:ui
       - name: Upload UI smoke screenshot
