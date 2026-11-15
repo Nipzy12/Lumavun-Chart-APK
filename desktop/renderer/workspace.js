@@ -459,7 +459,7 @@ let searchProvider='BINANCE',searchBusy=false;
 const candidates={
  BINANCE:['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','DOGEUSDT','ADAUSDT','LINKUSDT'],
  BIQUOTE:['XAUUSD','EURUSD','GBPUSD','USDJPY'],
- EXNESS:[],MT5:['XAUUSD','EURUSD','GBPUSD','USDJPY'],MCP:[]
+ EXNESS:[],MT5:['XAUUSD','EURUSD','GBPUSD','USDJPY']
 };
 function renderSymbolSuggestions(){
  const query=$('tvSearchQuery').value.trim().toUpperCase().replace(/[\/_\-\s]/g,'');
@@ -480,7 +480,7 @@ function renderSymbolSuggestions(){
  }
 }
 function setSearchProvider(provider){
- if(!['BINANCE','BIQUOTE','EXNESS','MT5','MCP'].includes(provider))return;
+ if(!['BINANCE','BIQUOTE','EXNESS','MT5'].includes(provider))return;
  searchProvider=provider;
  document.querySelectorAll('[data-search-provider]').forEach(btn=>btn.classList.toggle('active',btn.dataset.searchProvider===provider));
  renderSymbolSuggestions();
@@ -502,7 +502,7 @@ $('tvSearchForm').addEventListener('submit',e=>{
 });
 async function chooseSymbol(raw,provider){
  if(searchBusy)return;
- const symbol=(provider==='MT5'||provider==='MCP')?String(raw||'').trim():String(raw||'').trim().toUpperCase().replace(/[\/_\-\s]/g,'');
+ const symbol=provider==='MT5'?String(raw||'').trim():String(raw||'').trim().toUpperCase().replace(/[\/_\-\s]/g,'');
  const item=normalizeWatchItem({provider,symbol});
  if(!item){toast('Invalid symbol for selected provider.');return;}
  searchBusy=true;

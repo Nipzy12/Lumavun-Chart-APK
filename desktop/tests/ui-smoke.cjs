@@ -111,7 +111,11 @@ async function main(){
   assert.equal(await page.locator('#mt5Execute').isDisabled(),true);
   await page.locator('#mt5McpCommand').waitFor({state:'visible'});
   assert.match(await page.locator('#mt5McpCommand').inputValue(),/bridge\.py.*--mcp/);
-  assert.equal(await page.locator('#mcpStart').isEnabled(),true,'Internal MCP must be opt-in.');
+  assert.equal(await page.locator('#mcpUseNativeAddress').count(),1,'Native MT5 MCP preset must be available.');
+  await page.locator('#mcpUseNativeAddress').click();
+  assert.equal(await page.locator('#mcpServerUrl').inputValue(),'http://127.0.0.1:22346/mcp');
+  assert.equal(await page.locator('#mcpServerKey').inputValue(),'','Native MT5 API key is never hardcoded.');
+  assert.equal(await page.locator('#mcpStart').isEnabled(),true,'Internal LUMAVUN gateway remains optional.');
   await page.locator('#mcpStart').click();
   await page.waitForFunction(()=>document.getElementById('mcpLocalStatus')?.textContent?.includes('Internal MCP aktif'),null,{timeout:10000});
   assert.match(await page.locator('#mcpServerUrl').inputValue(),/^http:\/\/127\.0\.0\.1:\d+\/mcp$/);
@@ -168,7 +172,7 @@ async function main(){
   await page.locator('#marketProvider').selectOption('BIQUOTE');
   assert.match(await page.locator('#providerBadge').textContent(),/BIQUOTE/);
   if(errors.length)throw Error('UI JavaScript errors: '+errors.join('; ').slice(0,500));
-  console.log('PASS Electron UI smoke: compact TradingView-like chrome, symbol dialog, chart settings, watchlist quotes, right utility rail, collapsible dock, studies, drawing tools, alerts, strategy six pages, guarded MT5 ticket, authenticated loopback MCP server and local connection.');
+  console.log('PASS Electron UI smoke: compact TradingView-like chrome, symbol dialog, chart settings, watchlist quotes, right utility rail, collapsible dock, studies, drawing tools, alerts, strategy six pages, native MT5 MCP preset, guarded MT5 ticket, authenticated loopback server and connection.');
  }finally{if(app)await app.close();}
 }
 main().catch(error=>{console.error('FAIL desktop UI smoke:',error?.message||error);process.exitCode=1;});

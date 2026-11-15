@@ -323,14 +323,16 @@
    <div id="mt5Positions" class="mt5Positions">Connect MT5 to read current positions.</div>
    <div class="mt5McpPanel">
 <div class="mcpHttpCard" aria-label="Authenticated internal MCP HTTP server">
-      <div class="mt5CardTitle"><h3>Internal MCP HTTP Gateway</h3><span id="mcpLocalBadge" class="mcpBadge">OFF</span></div>
-      <p>Jalankan gateway lokal di <code>127.0.0.1</code>, buat API key acak, lalu hubungkan alamatnya ke aplikasi. Tidak ada API key MCP bawaan MT5. Kunci yang dibuat di sini <strong>bukan</strong> password akun broker.</p>
+      <div class="mt5CardTitle"><h3>Koneksi MCP MT5 Bawaan / LUMAVUN</h3><span id="mcpLocalBadge" class="mcpBadge">OFF</span></div>
+      <p><strong>MT5 sudah menyediakan MCP server dan API key sendiri</strong> (Tools → Options → MCP). Aktifkan server internal pada terminal MT5, klik Generate untuk membuat key baru, lalu masukkan URL dan key-nya di bawah. Tidak diperlukan server Python tambahan untuk koneksi MCP bawaan.</p>
+      <p>Gunakan <code>http://127.0.0.1:22346/mcp</code> jika alamat di MT5 belum diubah. LUMAVUN juga punya gateway lokal terpisah yang dapat dijalankan lewat tombol di bawah; key gateway LUMAVUN tidak sama dengan key MT5.</p>
       <div class="mcpConnectionFields">
-       <div class="mt5Field"><label for="mcpServerUrl">Internal MCP Server URL</label><input id="mcpServerUrl" type="url" spellcheck="false" autocomplete="off" placeholder="http://127.0.0.1:8765/mcp"></div>
+       <div class="mt5Field"><label for="mcpServerUrl">Internal MCP Server URL</label><input id="mcpServerUrl" type="url" spellcheck="false" autocomplete="off" placeholder="http://127.0.0.1:22346/mcp"></div>
        <div class="mt5Field"><label for="mcpServerKey">MCP API Key (Bearer)</label><input id="mcpServerKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="Kunci MCP, bukan password MT5"></div>
       </div>
       <div class="mt5ButtonRow mcpActionRow">
-       <button id="mcpStart" type="button" class="tvBlueButton">Jalankan Server Internal</button>
+       <button id="mcpUseNativeAddress" type="button" class="tvBlueButton">Gunakan Alamat MCP MT5</button>
+       <button id="mcpStart" type="button" class="subtleButton">Jalankan Gateway LUMAVUN</button>
        <button id="mcpConnectLocal" type="button" class="subtleButton">Hubungkan Server Lokal</button>
        <button id="mcpConnect" type="button" class="subtleButton">Hubungkan URL + Key</button>
        <button id="mcpRevealKey" type="button" class="subtleButton">Tampilkan Key Lokal</button>
@@ -345,7 +347,7 @@
        <button id="mcpOpenChart" type="button" class="subtleButton">Buka Simbol di Chart MCP</button>
       </div>
       <p id="mcpTestResult" class="mcpStatus" role="status">Server terhubung belum tentu berarti terminal MT5 tersedia. Uji data broker setelah MT5 aktif.</p>
-      <p class="mcpHelp">HTTP tanpa enkripsi hanya diizinkan untuk localhost. Gunakan HTTPS untuk endpoint jaringan internal lain. API key hanya disimpan selama aplikasi terbuka dan dirotasi saat server lokal dimulai ulang. Tidak ada endpoint order_send.</p>
+      <p class="mcpHelp">Kunci API dari MT5 tetap dalam memori aplikasi saja dan tidak ditulis ke file. MT5 MCP native memiliki tool order, shell, dan file yang berpotensi sensitif; LUMAVUN hanya memanggil tool baca-saja yang diizinkan. Server lokal milik LUMAVUN juga tidak menyediakan order_send. HTTP hanya untuk localhost; server jaringan lain wajib HTTPS.</p>
      </div>
      <h3>MT5 MCP Server (read only) · stdio alternatif</h3>
     <p>Tool tersedia: account, symbols, ticker, candles, positions, preview_order. AI/MCP tidak dapat mengirim order BUY atau SELL.</p>
@@ -372,7 +374,7 @@
 
  <div class="settingsHint"><strong>Data &amp; privacy</strong><p>Token Exness dan API key model hanya disimpan selama aplikasi terbuka. Watchlist dan akun paper trading tersimpan lokal. Pengaturan instalasi model tetap berada di Ollama Windows.</p></div>
 </section>
-  <footer>DESKTOP PREVIEW v0.9 · Internal MCP server with API key · AI/MCP read-only · MT5 manual order confirmation. <span class="tvAttribution">Chart engine: <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">Lightweight Charts™ by TradingView</a></span></footer>
+  <footer>DESKTOP PREVIEW v0.9.1 · Native MT5 MCP direct connection · Read-only AI · Confirmed MT5 manual orders. <span class="tvAttribution">Chart engine: <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">Lightweight Charts™ by TradingView</a></span></footer>
  </main>
 </div>
 </div>
