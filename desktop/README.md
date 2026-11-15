@@ -159,10 +159,11 @@ The GitHub Actions Electron smoke test checks actual layout elements, modal symb
 
 ## v0.9: Authenticated internal MCP HTTP server with API-key URL connection
 
-MetaTrader 5 does NOT expose a built-in MCP API URL or API key. Its account and
-server entries identify a broker connection, not an MCP endpoint. LUMAVUN
-generates a separate 256-bit random MCP Bearer key on explicit local server
-startup. This is never the MT5 trading password, investor password or login.
+MetaTrader 5 build 6060+ DOES expose a native MCP server and an API key in
+Tools > Options > MCP. Its terminal endpoint is typically
+http://127.0.0.1:22346/mcp. The MT5 MCP API key is not the broker password.
+LUMAVUN also offers its separate built-in gateway, which generates its own
+256-bit session key. These two servers/keys are distinct.
 
 ### Start a local MCP gateway and connect it to LUMAVUN
 
@@ -209,3 +210,41 @@ key rotation, tool allowlist, unauthorized execution, MCP client handshake,
 HTTPS URL validation, and fake broker quotes. Electron Windows GUI smoke
 checks start/connect/reveal/stop and order-lock state. This testing never
 accesses an actual broker account or places a real trade.
+
+
+## v0.9.1: connect directly to MetaTrader 5 built-in MCP server
+
+**Correction to v0.9:** MetaTrader 5 desktop build 6060 (July 2026) added
+native MCP. The native MT5 server exposes real read-only tools such as
+get_marketwatch_symbols, get_chart_history, get_chart_ticks_history,
+get_trading_account_info, and get_trading_open_positions. It also exposes
+DANGEROUS tools such as trade_send_market_order, shell, and file mutation.
+Those dangerous capabilities are NEVER forwarded to the LUMAVUN AI/chart
+client. The existing v0.9 endpoint incorrectly demanded only "ticker" and
+"candles" tools, causing native MT5 MCP connections to fail. v0.9.1 discovers
+the actual schema and maps only the explicitly supported READ-ONLY tools.
+
+Open MT5 Windows > Tools > Options > MCP. Enable internal server, generate
+a new API key, click OK to apply, and copy the address and key into LUMAVUN
+MT5 Trading > MCP panel. Use the button Gunakan Alamat MCP MT5 to populate
+the standard URL http://127.0.0.1:22346/mcp, or replace it with your actual
+port from MT5. Click Hubungkan URL + Key, then Uji Data Akun MCP.
+
+Native MCP server availability depends on MT5 version and configuration.
+The client performs MCP initialize, optional initialized notification,
+tools/list discovery and enforces a fixed set of read-only tool names. Native
+input schemas may change across MT5 builds. Unsupported required parameters
+are rejected with an explicit error rather than guessed. For candlestick
+history, returned bars must be valid numeric OHLC with timestamps. For live
+quotes, valid bid/ask from Market Watch (or supported quote/tick tool) must
+exist. There are NO synthetic live candles, no order access, and no automatic
+trading via this connection.
+
+The native HTTP MCP connection does not need Python or the MetaTrader5
+Python package. Those remain optional dependencies of LUMAVUN's older local
+bridge used by the separate manual BUY/SELL interface. Tests use a simulated
+MetaQuotes native MCP server, NOT a real terminal on the user's device.
+
+Official documentation:
+https://www.metatrader5.com/en/terminal/help/mcp_and_ai/configuration
+https://www.metatrader5.com/en/terminal/help/mcp_and_ai/capabilities

@@ -1,7 +1,7 @@
 {
   "name": "lumavun-chart-desktop",
   "productName": "LUMAVUN Chart",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "private": true,
   "description": "LUMAVUN Chart Windows desktop preview, ported from Lumavun-Chart-APK",
   "main": "main.cjs",
@@ -10,7 +10,7 @@
     "test": "node --test core/*.test.cjs",
     "prepare:assets": "node scripts/copy-chart.cjs",
     "dist:win": "npm run prepare:assets && electron-builder --win nsis portable --x64",
-    "check:syntax": "node --check main.cjs && node --check preload.cjs && node --check renderer/app.js && node --check core/market.cjs && node --check core/paper.js && node --check core/insight.js && node --check core/ai-analyst.cjs && node --check core/vision.cjs && node --check tests/ui-smoke.cjs && node --check core/local-ai-manager.cjs && node --check core/supercharts.js && node --check renderer/workspace.js && node --check core/mt5-client.cjs && node --check core/mt5-trade-gate.cjs && node --check renderer/mt5.js && node --check core/mt5-mcp-http.cjs && node --check core/mt5-mcp-client.cjs",
+    "check:syntax": "node --check main.cjs && node --check preload.cjs && node --check renderer/app.js && node --check core/market.cjs && node --check core/paper.js && node --check core/insight.js && node --check core/ai-analyst.cjs && node --check core/vision.cjs && node --check tests/ui-smoke.cjs && node --check core/local-ai-manager.cjs && node --check core/supercharts.js && node --check renderer/workspace.js && node --check core/mt5-client.cjs && node --check core/mt5-trade-gate.cjs && node --check renderer/mt5.js && node --check core/mt5-mcp-http.cjs && node --check core/mt5-mcp-client.cjs && node --check core/mt5-native-adapter.cjs",
     "test:ui": "npm run prepare:assets && node tests/ui-smoke.cjs"
   },
   "dependencies": {
