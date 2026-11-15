@@ -204,9 +204,9 @@ fun ChartScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 4.dp, vertical = 3.dp)
+            .padding(horizontal = 8.dp, vertical = 6.dp)
             .testTag("chart_terminal_screen"),
-        verticalArrangement = Arrangement.spacedBy(3.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         if (!isFullscreen && !reconnectingBannerMessage.isNullOrBlank()) {
             Box(
@@ -357,48 +357,32 @@ fun ChartScreen(
                 .weight(1f)
         )
 
-        // Full-screen-first chart: AI is one unobtrusive action instead of a tall card.
+        // 4. Compact AI Summary Card (hidden in Fullscreen Chart Mode)
         if (!isFullscreen) {
-            Row(
-                modifier = Modifier.fillMaxWidth()
-                    .clip(RoundedCornerShape(9.dp))
-                    .background(CyanAccent.copy(alpha = 0.065f))
-                    .clickable { showAnalystPanel = true }
-                    .padding(horizontal = 11.dp, vertical = 8.dp)
-                    .testTag("analyst_chart_button"),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(7.dp)
-                ) {
-                    Box(
-                        modifier = Modifier.size(6.dp)
-                            .background(
-                                if (isAiAnalyzing) NeutralAmber else CyanAccent,
-                                androidx.compose.foundation.shape.CircleShape
-                            )
-                    )
-                    Text(
-                        text = if (isAiAnalyzing) "AI sedang menganalisis"
-                            else "LUMAVUN AI · " + botActionSummary,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+            val activeModeLabel = when (settings.aiAnalysisSystem) {
+                com.example.storage.preferences.AiAnalysisSystem.AI_CONTINUOUS -> {
+                    "AI Continuous · ${settings.aiContinuousSubmode.label}"
                 }
-                Text(
-                    text = "Insight  ›",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = CyanAccent,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1
-                )
+                com.example.storage.preferences.AiAnalysisSystem.AI_TRADING_STYLE -> {
+                    "AI Gaya Trading · ${settings.tradingStyleProfile.label}"
+                }
             }
+            CompactAiAnalystCard(
+                symbol = activeSymbol,
+                timeframe = activeTimeframe,
+                snapshot = snapshot,
+                aiResult = aiResult,
+                isAnalyzing = isAiAnalyzing,
+                errorMessage = aiErrorMessage,
+                providerBadge = aiResult?.providerBadge ?: activeAiProviderBadge,
+                botActionSummary = botActionSummary,
+                marketAssessment = marketAssessment,
+                activeSetup = activeSetup,
+                activeModeAttributionLabel = activeModeLabel,
+                latestBaselineSignal = latestBaselineSignal,
+                onOpenAnalystPanel = { showAnalystPanel = true },
+                onOpenFullAiTab = onOpenFullAiTab
+            )
         }
 
         // In-Chart Analysis Panel (ModalBottomSheet on top of the Chart screen)

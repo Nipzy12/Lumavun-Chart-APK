@@ -442,3 +442,5 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .mcpActionRow button{font-size:10px;padding:8px 9px}
 .mcpStatus{border-radius:5px;background:#101a2a;border:1px solid #2b3952;margin:8px 0;padding:8px 10px;overflow-wrap:anywhere}
 .mcpHttpCard .mcpHelp{font-size:10px;color:#9aa8c1;margin-top:12px}
+
+.brandAppIcon{width:27px;height:27px;border-radius:7px;object-fit:cover;box-shadow:0 0 12px #8662d044;flex-shrink:0}

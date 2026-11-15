@@ -265,6 +265,7 @@ app.whenReady().then(()=>{
  const window=new BrowserWindow({
   width:1510,height:980,minWidth:970,minHeight:700,title:'LUMAVUN Chart',
   backgroundColor:'#080e1b',autoHideMenuBar:true,
+  icon:path.join(__dirname,'assets','app-icon.png'),
   webPreferences:{
    preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,
    contextIsolation:true,sandbox:true,webSecurity:true

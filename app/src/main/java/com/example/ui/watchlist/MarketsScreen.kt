@@ -1,6 +1,5 @@
 package com.example.ui.watchlist
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -31,12 +30,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -70,7 +66,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
@@ -127,17 +122,17 @@ import com.example.ui.theme.NeutralAmberSoft
 import java.util.Locale
 
 enum class MarketsSubTab(val label: String) {
-    WATCHLIST("Pantau"),
+    WATCHLIST("Watchlist"),
     CALENDAR("Calendar")
 }
 
 enum class MarketDiscoveryCategory(val label: String) {
     WATCHLIST("Watchlist"),
-    FAVORITES("★ Favorit"),
-    ALL_USDT("USDT"),
-    TOP_VOLUME("Volume"),
-    TOP_GAINERS("Naik"),
-    TOP_LOSERS("Turun")
+    FAVORITES("★ Favorites"),
+    ALL_USDT("All USDT"),
+    TOP_VOLUME("Top Volume"),
+    TOP_GAINERS("Top Gainers"),
+    TOP_LOSERS("Top Losers")
 }
 
 /**
@@ -189,38 +184,17 @@ fun MarketsScreen(
         is ProviderConnectionStatus.Connecting, is ProviderConnectionStatus.Stale -> WsConnectionStatus.RECONNECTING
         else -> WsConnectionStatus.DISCONNECTED
     }
-    val providerSearchResults = remember(searchResults, selectedSearchProvider, selectedCategory) {
-        searchResults.filter {
-            (selectedSearchProvider == null || it.provider == selectedSearchProvider) &&
-                (selectedCategory == InstrumentCategory.ALL || it.category == selectedCategory)
-        }
+    val providerSearchResults = remember(searchResults, selectedSearchProvider) {
+        searchResults.filter { selectedSearchProvider == null || it.provider == selectedSearchProvider }
     }
     var recentlyDeletedSymbol by remember { mutableStateOf<String?>(null) }
     var showAddSymbolQuickList by remember { mutableStateOf(false) }
     // Requirement B: Restrict swipe-to-delete to one active row at a time
     var activeSwipedSymbol by remember { mutableStateOf<String?>(null) }
     val searchFocusRequester = remember { FocusRequester() }
-    LaunchedEffect(showAddSymbolQuickList) {
-        if (showAddSymbolQuickList) runCatching { searchFocusRequester.requestFocus() }
-    }
-    var collapsedWatchlistGroups by remember { mutableStateOf(emptySet<InstrumentCategory>()) }
-    BackHandler(enabled = showAddSymbolQuickList || searchQuery.isNotBlank()) {
-        showAddSymbolQuickList = false
-        onSearchQueryChange("")
-        onSelectCategory(InstrumentCategory.ALL)
-    }
 
     val watchlistSymbolsSet = remember(watchlist) {
         watchlist.map { it.symbol.uppercase(Locale.US) }.toSet()
-    }
-    val watchlistProviderKeys = remember(watchlist) {
-        watchlist.map { entry ->
-            val category = if (entry.category.isNotBlank())
-                InstrumentCategory.fromCode(entry.category) else inferInstrumentCategory(entry.symbol)
-            val provider = if (entry.provider.isNotBlank())
-                MarketProvider.fromCode(entry.provider) else inferMarketProvider(entry.symbol, category)
-            provider.code + ":" + entry.symbol.uppercase(Locale.US)
-        }.toSet()
     }
 
     val filteredWatchlist = remember(watchlist, selectedCategory) {
@@ -256,115 +230,106 @@ fun MarketsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 8.dp, vertical = 5.dp)
+            .padding(horizontal = 12.dp, vertical = 10.dp)
             .testTag("markets_screen")
     ) {
-        // Market-first navigation: search is a full-screen mode, not a permanent toolbar.
+        // TradingView-style Watchlist Header with Refresh & "+ Symbol" buttons
         Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 7.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(7.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (showAddSymbolQuickList || searchQuery.isNotBlank()) {
-                    IconButton(
-                        onClick = {
-                            showAddSymbolQuickList = false
-                            onSearchQueryChange("")
-                            onSelectCategory(InstrumentCategory.ALL)
-                        },
-                        modifier = Modifier.size(38.dp).testTag("symbol_search_back_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Kembali ke Daftar Pantau",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-                Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                    Text(
-                        text = if (showAddSymbolQuickList || searchQuery.isNotBlank())
-                            "Cari Simbol" else "Daftar Pantau",
-                        style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.ExtraBold,
-                        maxLines = 1
-                    )
-                    Text(
-                        text = if (showAddSymbolQuickList || searchQuery.isNotBlank())
-                            "Pilih sumber data yang sesuai" else "${watchlist.size} instrumen · LUMAVUN Market",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "WATCHLIST",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    softWrap = false
+                )
+                Text(
+                    text = "${watchlist.size} instruments · Crypto, Forex, Metals, Stocks & Indices",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
 
             Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                IconButton(
-                    onClick = onRefreshWatchlist,
-                    modifier = Modifier.size(38.dp).testTag("watchlist_refresh_button")
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f), RoundedCornerShape(8.dp))
+                        .clickable { onRefreshWatchlist() }
+                        .testTag("watchlist_refresh_button")
                 ) {
-                    if (isLoadingWatchlistData) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(17.dp), strokeWidth = 2.dp, color = CyanAccent
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Perbarui data pasar",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(19.dp)
-                        )
+                    Box(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isLoadingWatchlistData) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(15.dp),
+                                strokeWidth = 2.dp,
+                                color = CyanAccent
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Refresh Watchlist Data",
+                                tint = CyanAccent,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
+
                 Surface(
-                    color = CyanAccent.copy(alpha = 0.13f),
-                    shape = RoundedCornerShape(10.dp),
+                    color = CyanAccent.copy(alpha = 0.16f),
+                    shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
-                        .border(1.dp, CyanAccent.copy(alpha = 0.42f), RoundedCornerShape(10.dp))
+                        .border(1.dp, CyanAccent.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
                         .clickable {
-                            val next = !(showAddSymbolQuickList || searchQuery.isNotBlank())
-                            showAddSymbolQuickList = next
-                            if (!next) {
-                                onSearchQueryChange("")
-                                onSelectCategory(InstrumentCategory.ALL)
-                            }
+                            showAddSymbolQuickList = !showAddSymbolQuickList
                             activeSwipedSymbol = null
+                            if (showAddSymbolQuickList) {
+                                runCatching { searchFocusRequester.requestFocus() }
+                            }
                         }
                         .testTag("watchlist_add_symbol_button")
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(
-                            imageVector = if (showAddSymbolQuickList || searchQuery.isNotBlank())
-                                Icons.Default.Close else Icons.Default.Add,
-                            contentDescription = "Tambah simbol",
+                            imageVector = if (showAddSymbolQuickList) Icons.Default.Close else Icons.Default.Add,
+                            contentDescription = "Add Symbol",
                             tint = CyanAccent,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = if (showAddSymbolQuickList || searchQuery.isNotBlank()) "Tutup" else "Simbol",
+                            text = if (showAddSymbolQuickList) "Close Add" else "+ Symbol",
                             style = MaterialTheme.typography.labelMedium,
                             color = CyanAccent,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Feedback Banner for Add / Duplicate / Invalid Symbol / API Error / Loading
         AnimatedVisibility(visible = !feedbackMessage.isNullOrBlank()) {
@@ -484,8 +449,7 @@ fun MarketsScreen(
             }
         }
 
-        if (showAddSymbolQuickList || searchQuery.isNotBlank()) {
-        // Symbol finder: shows categorized, provider-specific instruments.
+        // Dynamic Pair Search & Direct Add Row (Requirement C)
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -499,7 +463,7 @@ fun MarketsScreen(
                 },
                 placeholder = {
                     Text(
-                        text = "BTCUSDT, XAUUSD, EURUSD, AAPL...",
+                        text = "Search Crypto, Forex, Gold, Stocks (BTC, EURUSD, XAUUSD, AAPL)...",
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
                         softWrap = false,
@@ -531,12 +495,11 @@ fun MarketsScreen(
                 keyboardActions = KeyboardActions(
                     onDone = {
                         if (searchQuery.isNotBlank()) {
-                            val exactResult = providerSearchResults.firstOrNull {
-                                it.symbol.equals(searchQuery.trim(), ignoreCase = true) &&
-                                    it.status.equals("TRADING", ignoreCase = true)
-                            }
-                            if (exactResult != null) onAddMarketInstrument(exactResult)
-                            else if (selectedSearchProvider == null) onAddPair(searchQuery)
+                            if (selectedSearchProvider == MarketProvider.EXNESS) {
+                                providerSearchResults.firstOrNull {
+                                    it.symbol.equals(searchQuery.trim(), ignoreCase = true) && it.status == "TRADING"
+                                }?.let(onAddMarketInstrument)
+                            } else onAddPair(searchQuery)
                         }
                     }
                 ),
@@ -547,7 +510,7 @@ fun MarketsScreen(
                     .testTag("pair_search_input")
             )
 
-            if (searchQuery.isNotBlank() && selectedSearchProvider == null) {
+            if (searchQuery.isNotBlank() && selectedSearchProvider != MarketProvider.EXNESS) {
                 Surface(
                     color = CyanAccent,
                     shape = RoundedCornerShape(10.dp),
@@ -671,7 +634,8 @@ fun MarketsScreen(
         }
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Search Results from multi-provider market catalogs.
+        if (searchQuery.isNotBlank() || showAddSymbolQuickList) {
+            // Search Results from Multi-Market Catalog (Binance USDT + BiQuote Forex/Metals/Stocks/Indices)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -730,23 +694,6 @@ fun MarketsScreen(
                                 textAlign = TextAlign.Center
                             )
                             OutlinedButton(onClick = onRefreshMarketSymbols) { Text("Refresh Instruments") }
-                        } else if (selectedSearchProvider != null) {
-                            Text(
-                                text = "Tidak ada simbol terverifikasi untuk " +
-                                    selectedSearchProvider!!.displayLabel,
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = "Perbarui katalog provider atau pilih simbol lain. Daftar contoh bukan bukti ketersediaan data.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-                            OutlinedButton(onClick = onRefreshMarketSymbols) {
-                                Text("Segarkan katalog")
-                            }
                         } else if (normalizedCandidate.isNotEmpty()) {
                             Text(
                                 text = "${formatSymbolPair(normalizedCandidate)} belum ada di cache lokal",
@@ -795,9 +742,7 @@ fun MarketsScreen(
                         .testTag("pair_search_results_list")
                 ) {
                     items(providerSearchResults, key = { "${it.provider.code}:${it.symbol}" }) { item ->
-                        val inWatchlist = watchlistProviderKeys.contains(
-                            item.provider.code + ":" + item.symbol.uppercase(Locale.US)
-                        )
+                        val inWatchlist = watchlistSymbolsSet.contains(item.symbol.uppercase(Locale.US))
                         val isFav = favoriteSymbols.contains(item.symbol.uppercase(Locale.US))
                         val liveTicker = liveTickers[item.symbol]
                         val connStatus = when (item.provider) {
@@ -823,7 +768,6 @@ fun MarketsScreen(
                                 if (item.status.equals("TRADING", ignoreCase = true)) {
                                     if (!inWatchlist) onAddMarketInstrument(item)
                                     showAddSymbolQuickList = false
-                                    onSearchQueryChange("")
                                     onSelectMarketInstrumentForChart(item)
                                 } else {
                                     onAddMarketInstrument(item) // Validate candidate against provider first
@@ -842,7 +786,7 @@ fun MarketsScreen(
                 }
             }
         } else {
-            // Compact watchlist: the market rows own the vertical space.
+            // Market Discovery Filter Tabs
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -881,7 +825,32 @@ fun MarketsScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Flat instrument list: price and % align naturally; no redundant table labels.
+            // Column headers (TradingView Watchlist table style: LEFT = SYMBOL / 24H VOL | RIGHT = LAST PRICE / 24H CHG%)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "SYMBOL / 24H VOL",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    softWrap = false
+                )
+                Text(
+                    text = "LAST PRICE / 24H CHG%",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    softWrap = false
+                )
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
             if (selectedDiscoveryCategory == MarketDiscoveryCategory.WATCHLIST) {
                 if (filteredWatchlist.isEmpty()) {
                     Box(
@@ -917,36 +886,14 @@ fun MarketsScreen(
                         }
                     }
                 } else {
-                    val groupedWatchlist = remember(filteredWatchlist) {
-                        filteredWatchlist.withIndex().groupBy { indexed ->
-                            val item = indexed.value
-                            if (item.category.isNotBlank()) InstrumentCategory.fromCode(item.category)
-                            else inferInstrumentCategory(item.symbol)
-                        }
-                    }
                     LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(0.dp),
-                        contentPadding = PaddingValues(bottom = 28.dp),
-                        modifier = Modifier.fillMaxSize().testTag("watchlist_lazy_column")
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(bottom = 24.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .testTag("watchlist_lazy_column")
                     ) {
-                        groupedWatchlist.forEach { (group, entries) ->
-                            item(key = "group_${group.name}") {
-                                WatchlistCategoryHeader(
-                                    category = group,
-                                    count = entries.size,
-                                    expanded = group !in collapsedWatchlistGroups,
-                                    onClick = {
-                                        collapsedWatchlistGroups =
-                                            if (group in collapsedWatchlistGroups)
-                                                collapsedWatchlistGroups - group
-                                            else collapsedWatchlistGroups + group
-                                    }
-                                )
-                            }
-                            if (group !in collapsedWatchlistGroups) {
-                                items(entries, key = { it.value.symbol }) { indexed ->
-                                    val index = indexed.index
-                                    val item = indexed.value
+                        itemsIndexed(filteredWatchlist, key = { _, item -> item.symbol }) { index, item ->
                             val live = liveTickers[item.symbol]
                             val price = if (live != null && live.lastPrice > 0.0) live.lastPrice else item.lastPrice
                             val changePct = live?.priceChangePercent ?: item.priceChangePercent
@@ -1021,36 +968,6 @@ fun MarketsScreen(
                                 },
                                 onRemove = { handleDeleteWithUndo(item.symbol) }
                             )
-                                }
-                            }
-                        }
-                        item(key = "watchlist_add_symbol_footer") {
-                            Box(
-                                modifier = Modifier.fillMaxWidth()
-                                    .padding(vertical = 18.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Surface(
-                                    color = CyanAccent.copy(alpha = 0.12f),
-                                    shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier
-                                        .border(
-                                            1.dp,
-                                            CyanAccent.copy(alpha = 0.32f),
-                                            RoundedCornerShape(10.dp)
-                                        )
-                                        .clickable { showAddSymbolQuickList = true }
-                                        .testTag("watchlist_add_symbol_footer")
-                                ) {
-                                    Text(
-                                        text = "+ Tambah Simbol",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = CyanAccent,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 19.dp, vertical = 10.dp)
-                                    )
-                                }
-                            }
                         }
                     }
                 }
@@ -1179,93 +1096,196 @@ private fun SearchSymbolResultRow(
     onToggleFavorite: () -> Unit,
     onToggleWatchlist: () -> Unit
 ) {
+    val compactLayout = LocalConfiguration.current.screenWidthDp < 390
     Row(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 73.dp)
-            .clickable(onClick = onSelectPair)
-            .padding(horizontal = 7.dp, vertical = 10.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 60.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(
+                1.dp,
+                if (inWatchlist) CyanAccent.copy(alpha = 0.45f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.45f),
+                RoundedCornerShape(10.dp)
+            )
+            .clickable { onSelectPair() }
+            .padding(horizontal = 12.dp, vertical = 10.dp)
             .testTag("search_result_${item.symbol}"),
-        horizontalArrangement = Arrangement.spacedBy(11.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        InstrumentIdentityMark(symbol = item.symbol, category = item.category)
+        // Left Area: Symbol + Market / Trading Status
         Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
+                MarketStatusLedDot(
+                    status = marketStatus,
+                    dotSize = 7.dp,
+                    testTag = "search_led_${item.symbol}"
+                )
                 Text(
-                    text = item.symbol.uppercase(Locale.US),
-                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
+                    text = formatSymbolPair(item.symbol, item.category),
+                    style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
+                    softWrap = false,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
                 )
-                MarketStatusLedDot(
-                    status = marketStatus, dotSize = 5.dp,
-                    testTag = "search_led_${item.symbol}"
-                )
+                Surface(
+                    color = CyanAccent.copy(alpha = 0.14f),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text(
+                        text = item.category.shortBadge,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CyanAccent,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                    )
+                }
+                if (inWatchlist) {
+                    Surface(
+                        color = BullishGreenSoft,
+                        shape = RoundedCornerShape(4.dp),
+                        modifier = Modifier.widthIn(min = 44.dp)
+                    ) {
+                        Text(
+                            text = "SAVED",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = BullishGreen,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            softWrap = false,
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                        )
+                    }
+                }
+            }
+            val subText = when {
+                !item.status.equals("TRADING", true) -> "Reference only · Tap Add to verify · ${item.provider.displayLabel}"
+                liveTicker != null && liveTicker.quoteVolume > 0.0 ->
+                    "Vol $${formatCompactVolume(liveTicker.quoteVolume)} · ${item.provider.displayLabel}"
+                item.displayName.isNotBlank() ->
+                    "${item.displayName} · ${item.provider.displayLabel}"
+                else ->
+                    "${item.symbol} · ${item.provider.displayLabel} · ${item.status}"
             }
             Text(
-                text = item.displayName.ifBlank { item.category.label },
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                text = subText,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
+                softWrap = false,
                 overflow = TextOverflow.Ellipsis
             )
         }
-        Column(
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(3.dp)
+
+        // Right Area: Live Price, 24h Change% (when available), Favorite & Add/Remove Action
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                text = item.provider.displayLabel,
-                style = MaterialTheme.typography.labelLarge.copy(fontSize = 12.sp),
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1
-            )
-            Text(
-                text = if (item.status.equals("TRADING", true))
-                    item.category.label else "Perlu verifikasi",
-                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                color = if (item.status.equals("TRADING", true))
-                    MaterialTheme.colorScheme.onSurfaceVariant else NeutralAmber,
-                maxLines = 1
-            )
-        }
-        IconButton(
-            onClick = onToggleFavorite,
-            modifier = Modifier.size(26.dp).testTag("search_fav_${item.symbol}")
-        ) {
-            Icon(
-                imageVector = if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
-                contentDescription = if (isFavorite) "Hapus favorit" else "Favoritkan simbol",
-                tint = if (isFavorite) NeutralAmber
-                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.58f),
-                modifier = Modifier.size(17.dp)
-            )
-        }
-        IconButton(
-            onClick = onToggleWatchlist,
-            modifier = Modifier.size(32.dp).testTag("toggle_watchlist_${item.symbol}")
-        ) {
-            Icon(
-                imageVector = if (inWatchlist) Icons.Default.Check else Icons.Default.Add,
-                contentDescription = if (inWatchlist) "Hapus dari Daftar Pantau" else "Tambah ke Daftar Pantau",
-                tint = if (inWatchlist) BullishGreen else CyanAccent,
-                modifier = Modifier.size(24.dp)
-            )
+            if (!compactLayout && liveTicker != null && liveTicker.lastPrice > 0.0) {
+                val isUp = liveTicker.priceChangePercent >= 0.0
+                val changeCol = if (isUp) BullishGreen else BearishRed
+                val changeBg = if (isUp) BullishGreenSoft else BearishRedSoft
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = formatPriceWithPrefix(liveTicker.lastPrice, item.symbol, item.category),
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontFamily = JetBrainsMonoFontFamily
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(changeBg)
+                            .padding(horizontal = 5.dp, vertical = 1.dp)
+                    ) {
+                        Text(
+                            text = "${if (isUp) "+" else ""}${String.format(Locale.US, "%.2f", liveTicker.priceChangePercent)}%",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = JetBrainsMonoFontFamily
+                            ),
+                            color = changeCol,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(30.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .clickable { onToggleFavorite() }
+                    .testTag("search_fav_${item.symbol}"),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                    contentDescription = "Favorite Pair",
+                    tint = if (isFavorite) NeutralAmber else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Surface(
+                color = if (inWatchlist) BullishGreenSoft else CyanAccent.copy(alpha = 0.18f),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier
+                    .border(
+                        1.dp,
+                        if (inWatchlist) BullishGreen.copy(alpha = 0.6f) else CyanAccent.copy(alpha = 0.7f),
+                        RoundedCornerShape(8.dp)
+                    )
+                    .clickable { onToggleWatchlist() }
+                    .testTag("toggle_watchlist_${item.symbol}")
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Icon(
+                        imageVector = if (inWatchlist) Icons.Default.Check else Icons.Default.Add,
+                        contentDescription = if (inWatchlist) "In Watchlist" else "Add to Watchlist",
+                        tint = if (inWatchlist) BullishGreen else CyanAccent,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Text(
+                        text = if (inWatchlist) "Added" else "Add",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (inWatchlist) BullishGreen else CyanAccent,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
+            }
         }
     }
-    HorizontalDivider(
-        thickness = 0.5.dp,
-        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.22f)
-    )
 }
 
 /**
@@ -1905,54 +1925,6 @@ private fun CalendarMetricCol(
 }
 
 @Composable
-private fun WatchlistCategoryHeader(
-    category: InstrumentCategory,
-    count: Int,
-    expanded: Boolean,
-    onClick: () -> Unit
-) {
-    val title = when (category) {
-        InstrumentCategory.CRYPTO -> "Kripto"
-        InstrumentCategory.FOREX -> "Forex"
-        InstrumentCategory.COMMODITIES -> "Komoditas & Logam"
-        InstrumentCategory.STOCKS -> "Saham"
-        InstrumentCategory.INDICES -> "Indeks"
-        InstrumentCategory.ALL -> "Pasar"
-    }
-    Row(
-        modifier = Modifier.fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(start = 8.dp, end = 10.dp, top = 13.dp, bottom = 8.dp)
-            .testTag("watchlist_group_${category.name.lowercase()}"),
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
-            contentDescription = if (expanded) "Ciutkan $title" else "Buka $title",
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(16.dp)
-        )
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.weight(1f)
-        )
-        Text(
-            text = count.toString(),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-    HorizontalDivider(
-        thickness = 0.5.dp,
-        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.20f)
-    )
-}
-
-@Composable
 private fun WatchlistRowCard(
     symbol: String,
     price: Double,
@@ -1979,139 +1951,266 @@ private fun WatchlistRowCard(
     onMoveDown: () -> Unit,
     onRemove: () -> Unit
 ) {
-    val resolvedStatus = marketStatus ?: remember(symbol, category, provider, price) {
+    val resolvedMarketStatus = marketStatus ?: remember(symbol, category, provider, price) {
+        val now = System.currentTimeMillis()
         MarketStatusService.evaluate(
-            symbol = symbol, category = category, provider = provider,
-            fallbackQuoteTimestampMs = if (price > 0.0) System.currentTimeMillis() else null
+            symbol = symbol,
+            category = category,
+            provider = provider,
+            fallbackQuoteTimestampMs = if (price > 0.0) now else null,
+            nowMs = now
         )
     }
-    val movementColor = if (changePercent >= 0.0) BullishGreen else BearishRed
-    val sign = if (changePercent >= 0.0) "+" else ""
-    var showActions by remember(symbol) { mutableStateOf(false) }
-    val maxSwipePx = with(LocalDensity.current) { 88.dp.toPx() }
-    var dragPx by remember(symbol) { mutableFloatStateOf(0f) }
-    var isDragging by remember(symbol) { mutableStateOf(false) }
-    LaunchedEffect(isSwipeOpen) {
-        if (!isSwipeOpen && !isDragging) dragPx = 0f
-    }
-    val basePx = if (isSwipeOpen) -maxSwipePx else 0f
-    val targetPx = if (isDragging) (basePx + dragPx).coerceIn(-maxSwipePx, 0f) else basePx
-    val animatedPx by animateFloatAsState(targetValue = targetPx, label = "watchlist_swipe_offset")
+    val isPositive = changePercent >= 0.0
+    val changeColor = if (isPositive) BullishGreen else BearishRed
+    val changeBg = if (isPositive) BullishGreenSoft else BearishRedSoft
+    val sign = if (isPositive) "+" else ""
 
-    Column(modifier = Modifier.fillMaxWidth()) {
-        BoxWithConstraints(
-            modifier = Modifier.fillMaxWidth().heightIn(min = 65.dp)
-                .clip(RoundedCornerShape(7.dp))
-                .background(if (isSwipeOpen) BearishRed.copy(alpha = 0.12f)
-                    else MaterialTheme.colorScheme.background)
-        ) {
-            if (canRemove) {
-                Box(
-                    modifier = Modifier.matchParentSize()
-                        .padding(end = 4.dp),
-                    contentAlignment = Alignment.CenterEnd
-                ) {
-                    Surface(
-                        color = BearishRed,
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.size(width = 80.dp, height = 46.dp)
-                            .clickable {
-                                onSwipeOpenChange(false)
-                                showActions = false
-                                onRemove()
-                            }
-                            .testTag("swipe_delete_button_$symbol")
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                text = "Hapus",
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold
-                            )
+    val density = LocalDensity.current
+    val maxSwipeRevealPx = with(density) { 96.dp.toPx() }
+    var dragDeltaPx by remember(symbol) { mutableFloatStateOf(0f) }
+    var isDragging by remember(symbol) { mutableStateOf(false) }
+
+    LaunchedEffect(isSwipeOpen) {
+        if (!isSwipeOpen && !isDragging) {
+            dragDeltaPx = 0f
+        }
+    }
+
+    val baseOffsetPx = if (isSwipeOpen) -maxSwipeRevealPx else 0f
+    val targetOffsetPx = if (isDragging) {
+        (baseOffsetPx + dragDeltaPx).coerceIn(-maxSwipeRevealPx * 1.12f, 0f)
+    } else {
+        baseOffsetPx
+    }
+    val animatedOffsetPx by animateFloatAsState(
+        targetValue = targetOffsetPx,
+        label = "watchlist_swipe_offset"
+    )
+    val isBackgroundVisible = canRemove && (isSwipeOpen || animatedOffsetPx < -2f)
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(
+                if (isBackgroundVisible) BearishRed.copy(alpha = 0.22f)
+                else MaterialTheme.colorScheme.surface
+            )
+    ) {
+        val isCompact = maxWidth < 370.dp
+
+        // Background Delete Action Button revealed on the right when swiped left
+        if (canRemove) {
+            Row(
+                modifier = Modifier
+                    .matchParentSize()
+                    .padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    color = BearishRed,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .width(80.dp)
+                        .height(42.dp)
+                        .clickable {
+                            dragDeltaPx = 0f
+                            isDragging = false
+                            onSwipeOpenChange(false)
+                            onRemove()
                         }
+                        .testTag("swipe_delete_button_$symbol")
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DeleteOutline,
+                            contentDescription = "Delete $symbol",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Delete",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false
+                        )
                     }
                 }
             }
-            Row(
-                modifier = Modifier.offset { IntOffset(animatedPx.roundToInt(), 0) }
-                    .fillMaxWidth()
-                    .heightIn(min = 65.dp)
-                    .clip(RoundedCornerShape(7.dp))
-                    .background(
-                        if (isSelected) CyanAccent.copy(alpha = 0.06f)
-                        else MaterialTheme.colorScheme.background
-                    )
-                    .pointerInput(symbol, canRemove, isSwipeOpen) {
-                        if (!canRemove) return@pointerInput
-                        detectHorizontalDragGestures(
-                            onDragStart = { isDragging = true; dragPx = 0f },
-                            onDragEnd = {
-                                val end = basePx + dragPx
-                                isDragging = false
-                                dragPx = 0f
-                                onSwipeOpenChange(end <= -maxSwipePx * 0.36f)
-                            },
-                            onDragCancel = {
-                                isDragging = false
-                                dragPx = 0f
-                                onSwipeOpenChange(isSwipeOpen)
-                            },
-                            onHorizontalDrag = { change, amount ->
-                                change.consume()
-                                dragPx = (dragPx + amount).coerceIn(-maxSwipePx - basePx, -basePx)
-                            }
-                        )
-                    }
-                    .clickable {
-                        if (isSwipeOpen) onSwipeOpenChange(false)
-                        else onSelect()
-                    }
-                    .padding(start = 7.dp, end = 3.dp, top = 8.dp, bottom = 8.dp)
-                    .testTag("watchlist_item_$symbol"),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(9.dp)
-            ) {
-                InstrumentIdentityMark(symbol = symbol, category = category)
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(3.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Text(
-                            text = symbol.uppercase(Locale.US),
-                            style = MaterialTheme.typography.titleSmall.copy(fontSize = 14.sp),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
-                                .testTag("watchlist_symbol_text_$symbol")
-                        )
-                        if (isSelected) {
-                            Box(
-                                modifier = Modifier.size(5.dp)
-                                    .background(CyanAccent, CircleShape)
-                                    .testTag("watchlist_active_badge_$symbol")
-                            )
+        }
+
+        // Foreground Watchlist Row Content
+        Row(
+            modifier = Modifier
+                .offset { IntOffset(animatedOffsetPx.roundToInt(), 0) }
+                .fillMaxWidth()
+                .heightIn(min = 64.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .border(
+                    width = if (isSelected) 1.5.dp else 1.dp,
+                    color = if (isSelected) CyanAccent else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(10.dp)
+                )
+                .pointerInput(symbol, canRemove, isSwipeOpen) {
+                    if (!canRemove) return@pointerInput
+                    detectHorizontalDragGestures(
+                        onDragStart = {
+                            isDragging = true
+                            dragDeltaPx = 0f
+                        },
+                        onDragEnd = {
+                            val startPx = if (isSwipeOpen) -maxSwipeRevealPx else 0f
+                            val endPx = (startPx + dragDeltaPx).coerceIn(-maxSwipeRevealPx * 1.12f, 0f)
+                            isDragging = false
+                            dragDeltaPx = 0f
+                            val shouldOpen = endPx <= -maxSwipeRevealPx * 0.38f
+                            onSwipeOpenChange(shouldOpen)
+                        },
+                        onDragCancel = {
+                            isDragging = false
+                            dragDeltaPx = 0f
+                            onSwipeOpenChange(isSwipeOpen)
+                        },
+                        onHorizontalDrag = { change, dragAmount ->
+                            change.consume()
+                            val startPx = if (isSwipeOpen) -maxSwipeRevealPx else 0f
+                            val nextTotal = (startPx + dragDeltaPx + dragAmount).coerceIn(-maxSwipeRevealPx * 1.12f, 0f)
+                            dragDeltaPx = nextTotal - startPx
                         }
-                        MarketStatusLedDot(
-                            status = resolvedStatus, dotSize = 5.dp,
-                            testTag = "watchlist_led_$symbol"
-                        )
-                    }
-                    Text(
-                        text = if (displayName.isNotBlank()) displayName else provider.displayLabel,
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.testTag("watchlist_volume_text_$symbol")
                     )
                 }
+                .clickable {
+                    if (isSwipeOpen) {
+                        onSwipeOpenChange(false)
+                    } else {
+                        onSelect()
+                    }
+                }
+                .padding(horizontal = if (isCompact) 10.dp else 12.dp, vertical = 10.dp)
+                .testTag("watchlist_item_$symbol"),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // LEFT AREA: Symbol + horizontal ACTIVE badge + 24h Volume
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = if (isCompact) 6.dp else 10.dp),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    MarketStatusLedDot(
+                        status = resolvedMarketStatus,
+                        dotSize = 7.dp,
+                        testTag = "watchlist_led_$symbol"
+                    )
+                    Text(
+                        text = formatSymbolPair(symbol, category),
+                        style = if (isCompact) {
+                            MaterialTheme.typography.titleSmall.copy(fontSize = 13.sp)
+                        } else {
+                            MaterialTheme.typography.titleMedium
+                        },
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .testTag("watchlist_symbol_text_$symbol")
+                    )
+                    if (isSelected) {
+                        Surface(
+                            color = CyanAccent.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(4.dp),
+                            modifier = Modifier
+                                .widthIn(min = 46.dp)
+                                .testTag("watchlist_active_badge_$symbol")
+                        ) {
+                            Text(
+                                text = "ACTIVE",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = CyanAccent,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                softWrap = false,
+                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                            )
+                        }
+                    }
+                }
+
+                val volumeLabel = when {
+                    quoteVolume > 0.0 -> "Vol $${formatCompactVolume(quoteVolume)}"
+                    bidPrice > 0.0 && askPrice > 0.0 ->
+                        "${category.shortBadge} · Bid ${formatInstrumentPrice(bidPrice, symbol, category)} / Ask ${formatInstrumentPrice(askPrice, symbol, category)}"
+                    displayName.isNotBlank() ->
+                        "${category.shortBadge} · $displayName"
+                    else ->
+                        "${category.shortBadge} · ${provider.displayLabel}"
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    if (isSelected) {
+                        val statusFg = ledColorFor(resolvedMarketStatus.ledState)
+                        val statusBg = ledSoftBgFor(resolvedMarketStatus.ledState)
+                        Surface(
+                            color = statusBg,
+                            shape = RoundedCornerShape(4.dp),
+                            modifier = Modifier
+                                .border(1.dp, statusFg.copy(alpha = 0.45f), RoundedCornerShape(4.dp))
+                                .testTag("watchlist_status_badge_$symbol")
+                        ) {
+                            Text(
+                                text = resolvedMarketStatus.shortBadgeLabel,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = statusFg,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                softWrap = false,
+                                modifier = Modifier
+                                    .padding(horizontal = 4.dp, vertical = 1.dp)
+                                    .testTag("watchlist_status_label_$symbol")
+                            )
+                        }
+                    }
+                    Text(
+                        text = volumeLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .weight(1f, fill = false)
+                            .testTag("watchlist_volume_text_$symbol")
+                    )
+                }
+            }
+
+            // RIGHT AREA: Last Price (Monospace), 24h % Change, and Compact Actions
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(if (isCompact) 6.dp else 10.dp)
+            ) {
                 Column(
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(3.dp)
@@ -2119,137 +2218,130 @@ private fun WatchlistRowCard(
                     Text(
                         text = if (price > 0.0) formatPriceWithPrefix(price, symbol, category) else "--",
                         style = MaterialTheme.typography.titleSmall.copy(
-                            fontFamily = JetBrainsMonoFontFamily, fontSize = 13.sp
+                            fontFamily = JetBrainsMonoFontFamily,
+                            fontSize = if (isCompact) 12.sp else 13.sp
                         ),
                         color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 1,
+                        softWrap = false,
                         modifier = Modifier.testTag("watchlist_price_text_$symbol")
                     )
-                    Text(
-                        text = sign + String.format(Locale.US, "%.2f", changePercent) + "%",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontFamily = JetBrainsMonoFontFamily, fontSize = 11.sp
-                        ),
-                        color = movementColor,
-                        maxLines = 1,
-                        modifier = Modifier.testTag("watchlist_change_text_$symbol")
-                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(changeBg)
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "$sign${String.format(Locale.US, "%.2f", changePercent)}%",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = JetBrainsMonoFontFamily
+                            ),
+                            color = changeColor,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false,
+                            modifier = Modifier.testTag("watchlist_change_text_$symbol")
+                        )
+                    }
                 }
-                IconButton(
-                    onClick = { showActions = !showActions },
-                    modifier = Modifier.size(28.dp).testTag("watchlist_more_$symbol")
+
+                // Compact Action Controls (never squeezes price or symbol)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(if (isCompact) 2.dp else 4.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.MoreHoriz,
-                        contentDescription = "Aksi $symbol",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(17.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable(onClick = onToggleFavorite)
+                            .testTag("fav_pair_$symbol"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                            contentDescription = "Toggle Favorite",
+                            tint = if (isFavorite) NeutralAmber else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(17.dp)
+                        )
+                    }
+
+                    if (showAddButton) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .clickable(onClick = onAdd)
+                                .testTag("add_pair_$symbol"),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add Pair",
+                                tint = CyanAccent,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    } else {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 22.dp, height = 19.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .clickable(enabled = canMoveUp, onClick = onMoveUp)
+                                    .testTag("move_up_$symbol"),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowUp,
+                                    contentDescription = "Move Up",
+                                    tint = if (canMoveUp) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 22.dp, height = 19.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .clickable(enabled = canMoveDown, onClick = onMoveDown)
+                                    .testTag("move_down_$symbol"),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.KeyboardArrowDown,
+                                    contentDescription = "Move Down",
+                                    tint = if (canMoveDown) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    if (canRemove) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .clickable(onClick = onRemove)
+                                .testTag("remove_pair_$symbol"),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DeleteOutline,
+                                contentDescription = "Remove Pair",
+                                tint = BearishRed.copy(alpha = 0.85f),
+                                modifier = Modifier.size(17.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
-        AnimatedVisibility(visible = showActions) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 42.dp, bottom = 5.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                WatchlistMiniAction(
-                    label = if (isFavorite) "★ Favorit" else "☆ Favorit",
-                    enabled = true, tag = "fav_pair_$symbol", onClick = onToggleFavorite
-                )
-                if (showAddButton) {
-                    WatchlistMiniAction(
-                        label = "+ Tambah", enabled = true, tag = "add_pair_$symbol",
-                        onClick = onAdd
-                    )
-                } else {
-                    WatchlistMiniAction(
-                        label = "↑", enabled = canMoveUp, tag = "move_up_$symbol",
-                        onClick = onMoveUp
-                    )
-                    WatchlistMiniAction(
-                        label = "↓", enabled = canMoveDown, tag = "move_down_$symbol",
-                        onClick = onMoveDown
-                    )
-                }
-                if (canRemove) {
-                    WatchlistMiniAction(
-                        label = "Hapus", enabled = true, tag = "remove_pair_$symbol",
-                        onClick = { showActions = false; onRemove() }
-                    )
-                }
-            }
-        }
-        HorizontalDivider(
-            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.20f),
-            thickness = 0.5.dp
-        )
-    }
-}
-
-@Composable
-private fun InstrumentIdentityMark(symbol: String, category: InstrumentCategory) {
-    val glyph = when {
-        symbol.startsWith("BTC", true) -> "₿"
-        symbol.startsWith("ETH", true) -> "Ξ"
-        symbol.startsWith("XAU", true) || symbol.equals("GOLD", true) -> "Au"
-        symbol.startsWith("XAG", true) -> "Ag"
-        category == InstrumentCategory.FOREX -> "FX"
-        category == InstrumentCategory.STOCKS -> symbol.take(2).uppercase(Locale.US)
-        category == InstrumentCategory.INDICES -> "IX"
-        category == InstrumentCategory.COMMODITIES -> "CM"
-        else -> symbol.take(1).uppercase(Locale.US)
-    }
-    val accent = when (category) {
-        InstrumentCategory.CRYPTO -> Color(0xFFE7AC47)
-        InstrumentCategory.FOREX -> Color(0xFF81A8EA)
-        InstrumentCategory.COMMODITIES -> Color(0xFFE7C76E)
-        InstrumentCategory.STOCKS -> Color(0xFF73BBD4)
-        InstrumentCategory.INDICES -> Color(0xFFA6A2EC)
-        InstrumentCategory.ALL -> CyanAccent
-    }
-    Box(
-        modifier = Modifier.size(36.dp).clip(CircleShape)
-            .background(
-                Brush.verticalGradient(
-                    listOf(accent.copy(alpha = 0.38f), accent.copy(alpha = 0.12f))
-                )
-            )
-            .border(1.dp, accent.copy(alpha = 0.35f), CircleShape),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = glyph,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.ExtraBold,
-            color = accent,
-            maxLines = 1
-        )
-    }
-}
-
-@Composable
-private fun WatchlistMiniAction(
-    label: String,
-    enabled: Boolean,
-    tag: String,
-    onClick: () -> Unit
-) {
-    Surface(
-        color = if (enabled) CyanAccent.copy(alpha = 0.10f)
-            else MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(7.dp),
-        modifier = Modifier.clickable(enabled = enabled, onClick = onClick)
-            .testTag(tag)
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = if (enabled) CyanAccent else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 7.dp, vertical = 6.dp)
-        )
     }
 }
 

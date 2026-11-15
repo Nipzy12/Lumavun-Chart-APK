@@ -284,27 +284,68 @@ function updateAiButton(){
  byId('aiVision').disabled=!active||!aiUi.visionShot||
   aiUi.visionShot.key!==marketAiKey()||Date.now()-aiUi.visionShot.at>120000;
 }
+let aiModelSyncTimer=null,aiModelSyncId=0;
+function updateModelOptions(models){
+ const select=byId('aiModel'),previous=select.value;
+ select.replaceChildren();
+ const placeholder=document.createElement('option');placeholder.value='';
+ placeholder.textContent=models.length?'Pilih model ('+models.length+' tersedia)':'Tidak ada model yang ditemukan';
+ select.append(placeholder);
+ for(const id of models){
+  const option=document.createElement('option');option.value=id;option.textContent=id;
+  select.append(option);
+ }
+ if(models.length)select.value=models.includes(previous)?previous:models[0];
+ aiUi.configured=false;updateAiButton();
+}
 function toggleAiFields(){
  const custom=byId('aiMode').value==='CUSTOM';
  byId('aiRemote').hidden=!custom;
- byId('aiDiscover').hidden=custom;
  byId('aiEndpoint').required=custom;
- byId('aiModel').placeholder=custom?'Nama model di provider API':'Contoh: qwen2.5:3b';
+ byId('aiDiscover').textContent=custom?'Sinkronkan model provider':'Sinkronkan model Ollama';
+ byId('aiModelSyncHint').textContent=custom?
+  'Daftar diambil dari /v1/models setelah API URL dan key tersedia; tidak perlu mengetik model.':
+  'Daftar diambil dari Ollama /api/tags yang sedang berjalan.';
 }
-byId('aiMode').addEventListener('change',()=>{toggleAiFields();aiUi.configured=false;resetAiOutput();resetVisionPreview();updateAiButton();setAiStatus('Provider berubah. Hubungkan model sebelum analisis.');});
-byId('aiModel').addEventListener('input',()=>{aiUi.configured=false;updateAiButton();});
-byId('aiEndpoint').addEventListener('input',()=>{aiUi.configured=false;updateAiButton();});
-byId('aiDiscover').addEventListener('click',async()=>{
- const btn=byId('aiDiscover');btn.disabled=true;setAiStatus('Memeriksa Ollama pada 127.0.0.1:11434…');
+async function syncModelCatalog(){
+ const mode=byId('aiMode').value,endpoint=byId('aiEndpoint').value.trim(),
+  key=byId('aiToken').value;
+ if(mode==='CUSTOM'&&!endpoint)return setAiStatus('Isi URL HTTPS /v1 provider dahulu untuk sinkronisasi otomatis.');
+ const requestId=++aiModelSyncId,button=byId('aiDiscover');
+ button.disabled=true;setAiStatus('Sinkronisasi model dari '+(mode==='CUSTOM'?endpoint:'Ollama lokal')+'…');
  try{
-  const models=await window.lumavun.listAiModels();
-  const datalist=byId('aiInstalledModels');datalist.replaceChildren();
-  for(const model of models){const option=document.createElement('option');option.value=model;datalist.append(option);}
-  if(models.length&&!byId('aiModel').value)byId('aiModel').value=models[0];
-  setAiStatus(models.length?models.length+' model lokal ditemukan. Pilih dan hubungkan model.':'Ollama aktif tetapi belum punya model. Jalankan ollama pull qwen2.5:3b.');
- }catch(error){setAiStatus('Gagal membaca model: '+String(error.message||error)+'; pastikan Ollama berjalan dan model sudah diunduh.');}
- finally{btn.disabled=false;}
+  const models=await window.lumavun.discoverAiModels({provider:mode,baseUrl:endpoint,apiKey:key});
+  if(requestId!==aiModelSyncId)return;
+  updateModelOptions(models);
+  setAiStatus(models.length+' model ditemukan langsung dari '+(mode==='CUSTOM'?'provider API':'Ollama')+
+   '. Pilih model lalu Hubungkan model.');
+ }catch(error){
+  if(requestId!==aiModelSyncId)return;
+  updateModelOptions([]);
+  setAiStatus('Sinkronisasi gagal: '+String(error.message||error).slice(0,260)+
+   '. Provider harus mendukung GET /v1/models.');
+ }finally{if(requestId===aiModelSyncId)button.disabled=false;}
+}
+function scheduleModelSync(){
+ clearTimeout(aiModelSyncTimer);
+ const mode=byId('aiMode').value;
+ if(mode==='CUSTOM'&&!byId('aiEndpoint').value.trim())return;
+ aiModelSyncTimer=setTimeout(()=>syncModelCatalog(),850);
+}
+byId('aiMode').addEventListener('change',()=>{
+ clearTimeout(aiModelSyncTimer);aiModelSyncId++;
+ toggleAiFields();updateModelOptions([]);resetAiOutput();resetVisionPreview();
+ setAiStatus('Provider berubah. Daftar model disinkronkan dari sumber yang dipilih.');
+ scheduleModelSync();
 });
+byId('aiModel').addEventListener('change',()=>{aiUi.configured=false;updateAiButton();});
+byId('aiEndpoint').addEventListener('input',()=>{
+ aiUi.configured=false;updateAiButton();scheduleModelSync();
+});
+byId('aiToken').addEventListener('input',scheduleModelSync);
+byId('aiEndpoint').addEventListener('blur',scheduleModelSync);
+byId('aiToken').addEventListener('blur',scheduleModelSync);
+byId('aiDiscover').addEventListener('click',()=>{clearTimeout(aiModelSyncTimer);syncModelCatalog();});
 byId('aiSettings').addEventListener('submit',async event=>{
  event.preventDefault();
  const submit=byId('aiSettings').querySelector('button[type="submit"]');
@@ -313,6 +354,7 @@ byId('aiSettings').addEventListener('submit',async event=>{
  try{
   const result=await window.lumavun.configureAi(config);
   aiUi.configured=Boolean(result?.configured);updateAiButton();
+  window.dispatchEvent(new CustomEvent('lumavun-ai-connected',{detail:{provider:result.provider,model:result.model}}));
   setAiStatus(result.provider+' · '+result.model+' · '+result.note+(aiUi.ready?' Klik Analisis chart saat ini.':' Refresh chart sebelum analisis.'));
  }catch(error){setAiStatus('Gagal menghubungkan AI: '+String(error.message||error));}
  finally{
@@ -382,7 +424,7 @@ setInterval(()=>{if(!busy&&!document.hidden)refresh(false);},45000);
 
 
 /* v0.5 navigable pages and in-app local model installer */
-const ROUTES=new Set(['chart','ai','models','paper','mt5','settings']);
+const ROUTES=new Set(['chart','ai','models','paper','mt5','office','performance','settings']);
 let currentPage='chart';
 function showPage(page) {
  if(!ROUTES.has(page))return;
@@ -406,6 +448,7 @@ function showPage(page) {
  });
  }
  if(page==='models')refreshLocalAiStatus();
+ window.LumaDash?.onPage(page);
 }
 document.querySelectorAll('#pageNav .navTab').forEach(button=>{
  button.addEventListener('click',()=>showPage(button.dataset.route));
@@ -454,8 +497,11 @@ function renderLocalModels(){
   use.addEventListener('click',()=>{
    byId('aiMode').value='OLLAMA';
    byId('aiMode').dispatchEvent(new Event('change'));
+   if(!Array.from(byId('aiModel').options).some(x=>x.value===item.model)){
+    const opt=document.createElement('option');opt.value=item.model;opt.textContent=item.model;byId('aiModel').append(opt);
+   }
    byId('aiModel').value=item.model;
-   byId('aiModel').dispatchEvent(new Event('input'));
+   byId('aiModel').dispatchEvent(new Event('change'));
    showPage('ai');
    setAiStatus('Model '+item.model+' dipilih. Klik Hubungkan model untuk memulai analisis.');
   });
