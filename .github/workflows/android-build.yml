@@ -2,7 +2,7 @@ name: Build LUMAVUN Android APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, feature/tradingview-inspired-market-ui-v5 ]
   workflow_dispatch:
 
 permissions:
