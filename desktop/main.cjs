@@ -4,6 +4,8 @@ const fs=require('node:fs/promises');
 const path=require('node:path');
 const market=require('./core/market.cjs');
 const ai=require('./core/ai-analyst.cjs');
+const modelCatalog=require('./core/model-catalog.cjs');
+const performance=require('./core/performance.js');
 const vision=require('./core/vision.cjs');
 const {LocalAiManager}=require('./core/local-ai-manager.cjs');
 const {MT5Client}=require('./core/mt5-client.cjs');
@@ -139,13 +141,48 @@ ipcMain.handle('lumavun:ticker',async (_event,input)=>{
 });
 
 ipcMain.handle('lumavun:ai:models',async ()=>ai.listOllamaModels());
+ipcMain.handle('lumavun:ai:available-models',async (_event,input)=>{
+ const provider=String(input?.provider||'').toUpperCase();
+ if(provider==='OLLAMA')return ai.listOllamaModels();
+ if(provider==='CUSTOM')return modelCatalog.customModels(input?.baseUrl,input?.apiKey||'');
+ throw Error('Unknown AI model provider.');
+});
+ipcMain.handle('lumavun:office:run',async (_event,input)=>{
+ const desk=String(input?.desk||'');
+ if(!['SCOUT','RISK','RESEARCH','BRIEFING'].includes(desk))
+  throw Error('Unknown virtual office desk.');
+ if(!aiConfig)throw Error('Connect an AI model first in AI Analyst.');
+ const provider=String(input?.provider||''),symbol=market.symbol(input?.symbol,provider);
+ const interval=String(input?.interval||'');
+ if(!market.INTERVALS.has(interval))throw Error('Unsupported timeframe.');
+ const cached=verifiedCandleCache.get(provider+'|'+symbol+'|'+interval);
+ if(!cached||Date.now()-cached.loadedAt>120000||cached.data.length<60)
+  throw Error('Chart snapshot is missing or stale. Refresh chart before running a desk.');
+ if(aiBusy)throw Error('AI provider is already analyzing another request.');
+ aiBusy=true;
+ try{
+  const snap=ai.createSnapshot({provider,symbol,interval,candles:cached.data});
+  snap.officeDesk=desk;
+  const result=await ai.analyze(aiConfig,snap);
+  return {desk,provider,symbol,interval,generatedAt:new Date().toISOString(),
+   result,model:aiConfig.model,execution:'ON_DEMAND_READ_ONLY'};
+ }finally{aiBusy=false;}
+});
+ipcMain.handle('lumavun:performance:mt5-history',async ()=>{
+ if(mt5McpRemote.status().mode!=='MT5_NATIVE')
+  throw Error('Connect the native MT5 MCP server to read closed-position history.');
+ const raw=await mt5McpRemote.call('history',{days:90});
+ return {source:'MT5_NATIVE_HISTORY',trades:performance.mt5Trades(raw),requestedDays:90};
+});
 ipcMain.handle('lumavun:ai:configure',async (_event,raw)=>{
  const config=ai.validateConfig(raw);
  if(config.provider==='OLLAMA'){
   const names=await ai.listOllamaModels();
-  if(!names.includes(config.model) && !names.includes(config.model+':latest')){
-   throw new Error('Model Ollama belum terinstal. Cek ollama list atau jalankan ollama pull '+config.model);
-  }
+  if(!names.includes(config.model)&&!names.includes(config.model+':latest'))
+   throw Error('Model Ollama belum terinstal. Sinkronkan daftar model lokal.');
+ }else{
+  const names=await modelCatalog.customModels(config.baseUrl,config.apiKey);
+  if(!names.includes(config.model))throw Error('Model tidak terdaftar pada /v1/models provider.');
  }
  // Secrets are in main-process RAM only, never returned to renderer or persisted.
  aiConfig=config;
@@ -265,6 +302,7 @@ app.whenReady().then(()=>{
  const window=new BrowserWindow({
   width:1510,height:980,minWidth:970,minHeight:700,title:'LUMAVUN Chart',
   backgroundColor:'#080e1b',autoHideMenuBar:true,
+  icon:path.join(__dirname,'assets','app-icon.png'),
   webPreferences:{
    preload:path.join(__dirname,'preload.cjs'),nodeIntegration:false,
    contextIsolation:true,sandbox:true,webSecurity:true

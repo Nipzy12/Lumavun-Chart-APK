@@ -248,3 +248,72 @@ MetaQuotes native MCP server, NOT a real terminal on the user's device.
 Official documentation:
 https://www.metatrader5.com/en/terminal/help/mcp_and_ai/configuration
 https://www.metatrader5.com/en/terminal/help/mcp_and_ai/capabilities
+
+
+## v1.0: Virtual AI Office, Trading Performance, Automatic Model Sync and Icon
+
+### Virtual AI Office
+
+Four specialist desks (Market Scout, Risk Officer, Research Lab, Briefing)
+run actual user-triggered AI inferences against the last verified chart
+snapshot with read-only role prompts. A desk stays IDLE unless running;
+completed/failed tasks are listed with their real time, output and model.
+Recent summaries are saved locally. There is no invisible background
+execution, scheduler, broker order tool or automatic trading.
+
+### Trading Performance
+
+Two distinct sources: local Paper Trading closed trades, and (on explicit
+Refresh) real CLOSED positions from native MT5 MCP tool
+get_trading_history_positions for the last 90 days. Unsupported history
+tools and incomplete records do NOT create fictional results. MT5 entries
+require a real close timestamp and trustworthy net PnL, or gross PnL
+with all broker-provided cost components (fee, commission, swap).
+
+Metrics: net realized PnL, win rate on non-breakeven closed trades,
+profit factor (when losses exist), expectancy as net PnL per closed trade,
+and peak-to-trough realized balance drawdown. Paper trading's starting
+balance supports a percentage drawdown. MT5 native history lacks an
+initial capital baseline, so only absolute realized cumulative PnL
+drawdown is shown. No intratrade equity drawdown is estimated.
+
+References:
+https://support.ninjatrader.com/s/article/Statistics-Definitions-Trade-Performance-in-NinjaTrader-Desktop
+https://www.claritytracking.com/blog/how-we-calculate-trading-metrics
+https://www.metatrader5.com/en/terminal/help/mcp_and_ai/capabilities
+
+### Automatically synced custom AI models
+
+Ollama obtains locally installed models from GET /api/tags. OpenAI-
+compatible providers obtain available model IDs from GET /v1/models
+using the user-entered HTTPS URL and optional in-session Bearer API
+key. Results populate the AI model selector automatically after
+changes to endpoint/key and on manual Refresh. The model selection
+is validated against the provider catalog before use. The model list
+must actually exist: no made-up fallback IDs are shown.
+
+Credentials are held in Electron RAM, not local activity history or
+disk. Model listing does not guarantee chat/vision inference support.
+The custom endpoint must meet the existing HTTPS public-domain
+validator and implement /v1/models.
+
+References:
+https://developers.openai.com/api/reference/resources/models/methods/list
+https://github.com/ollama/ollama/blob/main/docs/api.md#list-local-models
+
+### New Windows application icon
+
+The generated LUMAVUN crescent, fog, gold star and candlestick
+artwork is used for the window and application EXE. The 64px
+source PNG is shipped as desktop/assets/app-icon.png.
+The local scripts/build-icon.cjs creates an ICO without runtime
+downloads. Windows executable editing injects this icon into the
+installer/portable EXE. The full-resolution original generated
+artwork is supplied as a conversation attachment.
+
+### Verification and limitations
+
+GitHub Actions performs Node unit tests for trading metrics and
+model catalog, existing tests, Python mock MT5 tests, Electron
+eight-page UI smoke and screenshot previews. Actual connection
+to a personal MT5 terminal and AI provider cannot be tested in CI.

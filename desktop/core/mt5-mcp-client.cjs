@@ -118,6 +118,16 @@ class MT5McpRemote{
  }
  async call(logical,args={}){
   if(!this.url||!this.apiKey)throw Error('No MCP server connected to LUMAVUN.');
+  if(logical==='history'){
+   if(this.mode!=='MT5_NATIVE')throw Error('Trading history requires the native MT5 MCP connection.');
+   const raw=await this.nativeTool('history',{days:args.days||90});
+   const items=native.unwrap(raw);
+   if(Array.isArray(items))return items.slice(0,1000);
+   for(const key of ['positions','history','items']){
+    if(Array.isArray(raw?.[key]))return raw[key].slice(0,1000);
+   }
+   throw Error('MT5 history tool did not return a list of closed positions.');
+  }
   if(!TOOL_NAMES.has(logical))throw Error('MCP tool not permitted: '+logical);
   if(this.mode==='LUMAVUN_BRIDGE'){
    if(!this.tools.includes(logical))throw Error('Remote MCP tool unavailable: '+logical);

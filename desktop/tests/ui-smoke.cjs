@@ -12,7 +12,7 @@ async function main(){
   const errors=[];
   page.on('pageerror',error=>errors.push(error.message));
   await page.locator('#page-chart').waitFor({state:'visible',timeout:30000});
-  assert.equal(await page.locator('#pageNav button').count(),6);
+  assert.equal(await page.locator('#pageNav button').count(),8);
   assert.equal(await page.locator('#page-ai').isVisible(),false);
   assert.equal(await page.locator('#tvWorkspace').isVisible(),true);
   assert.equal(await page.locator('.topbar #pageNav').count(),1,'Navigation should live inside desktop titlebar.');
@@ -98,7 +98,23 @@ async function main(){
   assert.equal(await page.locator('#aiRemote').isVisible(),true,'Custom endpoint inputs appear.');
   await page.locator('#aiMode').selectOption('OLLAMA');
   assert.equal(await page.locator('#aiRemote').isVisible(),false,'Local mode hides remote fields.');
-  await page.locator('[data-route="models"]').click();
+  await page.locator('[data-route="office"]').click();
+  assert.equal(await page.locator('#page-office').isVisible(),true);
+  assert.equal(await page.locator('[data-office-run]').count(),4);
+  assert.match(await page.locator('#officeWorkspaceState').textContent(),/STANDBY/);
+  assert.equal(await page.locator('#officeActivityLog').textContent(),'Belum ada tugas yang dijalankan.');
+  assert.equal(await page.locator('#officeLatest .dashMiniLabel').textContent(),'NO VERIFIED RESULTS YET');
+  fs.mkdirSync(path.join(root,'artifacts'),{recursive:true});
+  await page.screenshot({path:path.join(root,'artifacts','office-ui-smoke.png'),fullPage:true});
+  await page.locator('[data-route="performance"]').click();
+  assert.equal(await page.locator('#page-performance').isVisible(),true);
+  assert.equal(await page.locator('#perfSource').inputValue(),'PAPER');
+  assert.match(await page.locator('#perfTrades').textContent(),/0 closed trades/);
+  assert.equal(await page.locator('#perfWin').textContent(),'—');
+  await page.screenshot({path:path.join(root,'artifacts','performance-ui-smoke.png'),fullPage:true});
+  await page.locator('[data-route="ai"]').click();
+  assert.equal(await page.locator('#aiModel').evaluate(el=>el.tagName),'SELECT','AI models must be selected from provider catalog.');
+    await page.locator('[data-route="models"]').click();
   await page.locator('#page-models').waitFor({state:'visible'});
   assert.equal(await page.locator('#localRuntimeInstall').count(),1);
   assert.equal(await page.locator('#localRuntimeStart').count(),1);
@@ -172,7 +188,7 @@ async function main(){
   await page.locator('#marketProvider').selectOption('BIQUOTE');
   assert.match(await page.locator('#providerBadge').textContent(),/BIQUOTE/);
   if(errors.length)throw Error('UI JavaScript errors: '+errors.join('; ').slice(0,500));
-  console.log('PASS Electron UI smoke: compact TradingView-like chrome, symbol dialog, chart settings, watchlist quotes, right utility rail, collapsible dock, studies, drawing tools, alerts, strategy six pages, native MT5 MCP preset, guarded MT5 ticket, authenticated loopback server and connection.');
+  console.log('PASS Electron UI smoke: compact TradingView-like chrome, symbol dialog, chart settings, watchlist quotes, right utility rail, collapsible dock, studies, drawing tools, alerts, strategy eight pages, Virtual AI Office, Performance dashboard, model dropdown, native MT5 MCP preset, guarded MT5 ticket, authenticated loopback server and connection.');
  }finally{if(app)await app.close();}
 }
 main().catch(error=>{console.error('FAIL desktop UI smoke:',error?.message||error);process.exitCode=1;});

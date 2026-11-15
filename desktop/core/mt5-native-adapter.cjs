@@ -5,6 +5,7 @@
 const NATIVE_READ=Object.freeze({
  account:'get_trading_account_info',
  positions:'get_trading_open_positions',
+ history:'get_trading_history_positions',
  symbols:'get_marketwatch_symbols',
  candles:'get_chart_history',
  ticks:'get_chart_ticks_history'
@@ -133,7 +134,7 @@ function buildArgs(tool,provided={},now=()=>Date.now()){
  if(!INTERVAL[interval])throw Error('Unsupported MT5 timeframe '+interval);
  const limit=Math.max(30,Math.min(500,Number(provided.limit)||300));
  const millisPerBar={'1m':60000,'3m':180000,'5m':300000,'15m':900000,'30m':1800000,'1h':3600000,'4h':14400000,'1d':86400000}[interval];
- const to=new Date(now()),from=new Date(to.getTime()-limit*millisPerBar*1.5);
+ const to=new Date(now()),from=new Date(to.getTime()-(provided.days?Math.min(365,Math.max(1,Math.floor(Number(provided.days)||90)))*86400000:limit*millisPerBar*1.5));
  for(const [key,property] of Object.entries(props)){
   const k=key.toLowerCase(),type=property?.type,enumValues=property?.enum;
   if(['symbol','symbol_name','ticker','instrument'].includes(k)&&symbol!==undefined){output[key]=symbol;continue;}

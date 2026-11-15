@@ -442,3 +442,107 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .mcpActionRow button{font-size:10px;padding:8px 9px}
 .mcpStatus{border-radius:5px;background:#101a2a;border:1px solid #2b3952;margin:8px 0;padding:8px 10px;overflow-wrap:anywhere}
 .mcpHttpCard .mcpHelp{font-size:10px;color:#9aa8c1;margin-top:12px}
+
+
+/* LUMAVUN v1.0 AI Office & Trading Performance. Distinct from broker/chart data. */
+.lumaDashPage{min-height:calc(100vh - 40px);max-height:calc(100vh - 40px);overflow-y:auto;padding:24px 25px 40px;background:radial-gradient(ellipse at 80% 0%,#20294b 0,transparent 39%),linear-gradient(140deg,#111826,#141c2c 52%,#101723);color:#dce4f3}
+.lumaDashTop{display:flex;justify-content:space-between;align-items:flex-end;gap:22px;margin-bottom:23px;flex-wrap:wrap}
+.lumaDashTop h1{font-size:clamp(22px,2.1vw,29px);font-weight:740;letter-spacing:-.035em;margin:6px 0 10px;color:#f4f2fb}
+.lumaDashTop p{font-size:11px;color:#9ba9c0;line-height:1.75;max-width:670px;margin:0}
+.lumaDashTop p strong{color:#c7d6e7}
+.lumaDashTopActions{display:flex;gap:8px;align-items:center}
+.lumaDashTopActions button{font-size:11px;padding:10px 15px;border-radius:7px}
+.dashMiniLabel{font-size:9px;font-weight:680;letter-spacing:.1em;color:#929bb2}
+.officeStatusStrip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:#1c273a;border:1px solid #334158;border-radius:11px;margin-bottom:18px;overflow:hidden}
+.officeStatusStrip>div{padding:17px 19px;border-right:1px solid #334158;display:flex;flex-direction:column;gap:9px;min-width:0}
+.officeStatusStrip>div:last-child{border-right:0}
+.officeStatusStrip strong{font-size:12px;color:#dde7f6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.officeLayout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,.8fr);gap:17px;align-items:stretch}
+.officeStudio,.officeActivity,.perfChartCard,.perfBreakdown,.perfHistoryCard{border:1px solid #303d54;border-radius:11px;background:#171f2f;min-width:0}
+.officeStudio,.officeActivity,.perfChartCard,.perfBreakdown,.perfHistoryCard{padding:19px}
+.officeStudioHeading,.perfCardHeader{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:16px}
+.officeStudioHeading h2,.perfCardHeader h2{font-size:15px;margin:5px 0 0;color:#e9eefa;font-weight:690}
+.officeStudioHeading h3{font-size:12px;margin:0;color:#dfebfa}
+.officeDesks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.officeDesk{background:#1c283b;border:1px solid #35415a;border-radius:9px;overflow:hidden;min-width:0;transition:border-color .18s,transform .18s}
+.officeDesk:hover{border-color:#665d92;transform:translateY(-1px)}
+.deskVisual{height:118px;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;border-bottom:1px solid #33415a}
+.deskVisual svg{width:72%;height:90px;opacity:.95;position:relative;z-index:1;filter:drop-shadow(0 5px 9px #0005)}
+.deskVisual .deskGlow{position:absolute;right:13px;top:8px;font-size:22px;opacity:.7;color:#e4c58f}
+.deskTag{position:absolute;left:14px;bottom:11px;background:#080d18aa;border:1px solid #61728a66;border-radius:4px;padding:4px 7px;color:#bfcde0;font-size:8px;letter-spacing:.07em;z-index:2}
+.deskScout{background:radial-gradient(ellipse at 70% 20%,#195e5b 0,transparent 55%),linear-gradient(120deg,#142a32,#14243c)}
+.deskRisk{background:radial-gradient(ellipse at 60% 10%,#6b5638 0,transparent 55%),linear-gradient(120deg,#253345,#302635)}
+.deskResearch{background:radial-gradient(ellipse at 66% 10%,#554278 0,transparent 58%),linear-gradient(120deg,#1b2441,#26203e)}
+.deskBrief{background:radial-gradient(ellipse at 63% 13%,#56506d 0,transparent 58%),linear-gradient(120deg,#302a44,#1b2941)}
+.officeDeskBody{padding:13px 14px 15px}
+.officeDeskBody>div{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.officeDeskBody h3{font-size:12px;color:#e7ebf5;font-weight:700;margin:0}
+.officeDeskBody span{font-size:8px;color:#8297ad;white-space:nowrap}
+.officeDeskBody span.running{color:#e3bf83}
+.officeDeskBody p{font-size:10px;line-height:1.65;color:#9baac0;min-height:47px;margin:9px 0}
+.officeDeskBody button{background:#2a3650;border:1px solid #4b5476;color:#d7e3f7;border-radius:6px;padding:9px 11px;width:100%;font-size:10px;font-weight:650}
+.officeDeskBody button:hover{background:#364564;border-color:#8a7bce}
+.officeDeskBody button:disabled{opacity:.5;cursor:wait}
+.officeActivity #officeMessage{font-size:11px;color:#b6c4d8;line-height:1.75;margin:0 0 15px}
+.officeLatest{background:linear-gradient(150deg,#1b2b41,#1e2340);border:1px solid #435071;border-radius:9px;padding:16px;min-height:170px}
+.officeLatest h3{font-size:14px;margin:9px 0;color:#e8d3a8}
+.officeLatest p,.officeLatest li{font-size:11px;line-height:1.75;color:#bdcbe0}
+.officeLatest ul{padding-left:18px}
+.officeRecentHead{margin:21px 0 9px}
+.officeActivityLog{display:flex;flex-direction:column;gap:8px;color:#94a8c1;font-size:11px}
+.officeLogItem{border:1px solid #324159;background:#182638;border-radius:7px;padding:11px 12px}
+.officeLogItem strong{display:block;font-size:10px;color:#e0e9f7}
+.officeLogItem small{display:block;color:#7f91ae;font-size:9px;margin-top:4px}
+.officeLogItem p{color:#adbed4;font-size:10px;line-height:1.5;margin:6px 0 0}
+.officeFooterNote{border:1px solid #314563;background:#1a273b;border-radius:8px;margin-top:15px;padding:13px 15px;color:#9fb1cb;font-size:10px;line-height:1.7}
+.officeFooterNote strong{color:#d5e1f2}
+.perfSourcePicker{display:flex;gap:9px;align-items:center}
+.perfSourcePicker label{font-size:9px;color:#93a4bc;letter-spacing:.08em;white-space:nowrap}
+.perfSourcePicker select{min-width:175px;background:#1a283b;color:#e6eafa;border-color:#42516b;font-size:11px}
+.perfSourcePicker button{border-radius:6px;padding:10px;font-size:11px}
+.perfSourceNote{border-left:3px solid #b7a4d6;margin-bottom:16px;padding:9px 12px;background:#1c2b41;color:#b6c4da;font-size:10px;line-height:1.6}
+.perfMetrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:11px;margin-bottom:16px}
+.perfMetrics article{background:#1b2638;border:1px solid #34435d;border-radius:9px;padding:15px 13px;display:flex;flex-direction:column;gap:9px;min-width:0}
+.perfMetrics article>span{font-size:9px;font-weight:720;letter-spacing:.06em;color:#a1afc5}
+.perfMetrics strong{font-size:clamp(16px,1.7vw,25px);font-variant-numeric:tabular-nums;color:#e7ecf7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.perfMetrics strong.negative{color:#f294a0}
+.perfMetrics small{color:#8094ae;font-size:9px;line-height:1.5}
+.perfMainGrid{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(275px,.85fr);gap:15px;margin-bottom:15px}
+.perfPlot{height:260px;min-height:260px;background:linear-gradient(160deg,#151c2a,#1b293a);border:1px solid #2d3b53;border-radius:8px;display:grid;place-items:center}
+.perfPlot svg{width:100%;height:100%}
+.perfPlotEmpty{font-size:11px;color:#889bb6;text-align:center;padding:30px}
+.perfChartCard>p{font-size:10px;line-height:1.6;margin:10px 0 0}
+.perfSplitBar{display:flex;overflow:hidden;border-radius:6px;background:#263149;height:13px;margin:24px 0 15px}
+.perfWinFill{display:block;background:#45c5a6;height:100%}
+.perfLossFill{display:block;background:#f2788c;height:100%}
+.perfLegend{display:flex;justify-content:space-between;align-items:center;gap:5px;flex-wrap:wrap;border-bottom:1px solid #344158;padding-bottom:17px;margin-bottom:12px}
+.perfLegend span{font-size:10px;color:#9faec5}
+.perfLegend strong{color:#e0e7f5;margin-left:4px}
+.perfDotWin,.perfDotLoss{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;background:#45c5a6}
+.perfDotLoss{background:#f2788c}
+.perfInlineStat{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #2f3b50;padding:11px 0;font-size:11px;color:#99aabc}
+.perfInlineStat strong{color:#e0e8f5;font-size:12px}
+.perfHistoryCard{padding-bottom:18px}
+.perfHistoryTable{max-height:300px;overflow-y:auto}
+.perfTableHead,.perfTableRow{display:grid;grid-template-columns:1.1fr 1fr .65fr 1fr;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid #2d3a50;min-width:0}
+.perfTableHead{background:#1d2a3f;color:#8d9eb4;font-size:9px;font-weight:680;letter-spacing:.04em}
+.perfTableRow{color:#cbd6e8;font-size:11px;font-variant-numeric:tabular-nums}
+.perfTableRow span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.perfTableRow .positive{color:#5ed5b3}.perfTableRow .negative{color:#f297a0}
+#aiModelSyncHint{font-size:9px;line-height:1.5;color:#9cacc1;margin:3px 0 0}
+#aiModel{min-width:150px}
+@media(max-width:1270px){
+ .officeLayout,.perfMainGrid{grid-template-columns:minmax(0,1fr)}
+ .perfMetrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .officeActivity{min-height:260px}
+}
+@media(max-width:960px){
+ .lumaDashPage{padding:18px}
+ .officeStatusStrip{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .officeStatusStrip>div:nth-child(2){border-right:0}
+ .officeStatusStrip>div:nth-child(-n+2){border-bottom:1px solid #334158}
+ .perfMetrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .perfSourcePicker{width:100%}
+}
+
+.brandAppIcon{width:27px;height:27px;border-radius:7px;object-fit:cover;box-shadow:0 0 12px #8662d044;flex-shrink:0}
