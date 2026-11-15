@@ -426,3 +426,19 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .mt5McpPanel h3{font-size:13px;color:#dce5f4}
 .mt5McpPanel textarea{margin-top:9px;resize:none;font-family:Consolas,monospace;font-size:10px}
 @media(max-width:1100px){.mt5AccountGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.mt5TradeGrid{grid-template-columns:minmax(0,1fr)}}
+
+
+/* v0.9 authenticated MCP URL and API-key connection */
+.mcpHttpCard{border:1px solid #415773;border-radius:10px;padding:16px;margin:0 0 20px;background:#17253a}
+.mcpHttpCard .mt5CardTitle h3{margin:0;font-size:14px;color:#e4ebf6}
+.mcpHttpCard p{font-size:11px;color:#9aacc7;line-height:1.7}
+.mcpHttpCard strong{color:#d8e4f7}
+.mcpBadge{display:inline-flex;border:1px solid #544343;border-radius:6px;padding:5px 9px;font-size:9px;color:#dca8a0;background:#36292c}
+.mcpBadge.online{background:#234d40;border-color:#418d73;color:#b5e9d2}
+.mcpConnectionFields{display:grid;grid-template-columns:minmax(0,1fr);gap:0}
+.mcpConnectionFields .mt5Field{margin:9px 0}
+.mcpConnectionFields input{font-size:11px;font-family:Consolas,"Segoe UI",monospace}
+.mcpActionRow{margin:14px 0 10px}
+.mcpActionRow button{font-size:10px;padding:8px 9px}
+.mcpStatus{border-radius:5px;background:#101a2a;border:1px solid #2b3952;margin:8px 0;padding:8px 10px;overflow-wrap:anywhere}
+.mcpHttpCard .mcpHelp{font-size:10px;color:#9aa8c1;margin-top:12px}

@@ -29,7 +29,7 @@
  <div class="tvWatchColumns"><span>Symbol</span><span>Last</span><span>Chg%</span></div>
   <label class="minorLabel" for="marketProvider">MARKET PROVIDER</label>
   <select id="marketProvider" class="textField">
-   <option value="BINANCE">Binance Spot</option><option value="BIQUOTE">BiQuote</option><option value="EXNESS">Exness Gateway</option><option value="MT5">MT5 Local Terminal</option>
+   <option value="BINANCE">Binance Spot</option><option value="BIQUOTE">BiQuote</option><option value="EXNESS">Exness Gateway</option><option value="MT5">MT5 Local Terminal</option><option value="MCP">MT5 via MCP Server</option>
   </select>
   <form id="searchForm" class="searchForm">
    <input id="symbolInput" aria-label="Cari simbol pada provider terpilih" autocomplete="off" spellcheck="false" placeholder="BTCUSDT / XAUUSD" maxlength="20">
@@ -322,7 +322,32 @@
    <p>Posisi dari terminal MT5 (bukan Paper Trading). Fungsi close posisi belum tersedia pada v0.8.</p>
    <div id="mt5Positions" class="mt5Positions">Connect MT5 to read current positions.</div>
    <div class="mt5McpPanel">
-    <h3>MT5 MCP Server (read only)</h3>
+<div class="mcpHttpCard" aria-label="Authenticated internal MCP HTTP server">
+      <div class="mt5CardTitle"><h3>Internal MCP HTTP Gateway</h3><span id="mcpLocalBadge" class="mcpBadge">OFF</span></div>
+      <p>Jalankan gateway lokal di <code>127.0.0.1</code>, buat API key acak, lalu hubungkan alamatnya ke aplikasi. Tidak ada API key MCP bawaan MT5. Kunci yang dibuat di sini <strong>bukan</strong> password akun broker.</p>
+      <div class="mcpConnectionFields">
+       <div class="mt5Field"><label for="mcpServerUrl">Internal MCP Server URL</label><input id="mcpServerUrl" type="url" spellcheck="false" autocomplete="off" placeholder="http://127.0.0.1:8765/mcp"></div>
+       <div class="mt5Field"><label for="mcpServerKey">MCP API Key (Bearer)</label><input id="mcpServerKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="Kunci MCP, bukan password MT5"></div>
+      </div>
+      <div class="mt5ButtonRow mcpActionRow">
+       <button id="mcpStart" type="button" class="tvBlueButton">Jalankan Server Internal</button>
+       <button id="mcpConnectLocal" type="button" class="subtleButton">Hubungkan Server Lokal</button>
+       <button id="mcpConnect" type="button" class="subtleButton">Hubungkan URL + Key</button>
+       <button id="mcpRevealKey" type="button" class="subtleButton">Tampilkan Key Lokal</button>
+       <button id="mcpCopyKey" type="button" class="subtleButton">Salin Key</button>
+       <button id="mcpDisconnect" type="button" class="subtleButton">Putus Koneksi</button>
+       <button id="mcpStop" type="button" class="subtleButton">Stop Server</button>
+      </div>
+      <p id="mcpLocalStatus" class="mcpStatus" aria-live="polite">Server belum dijalankan.</p>
+      <p id="mcpRemoteStatus" class="mcpStatus" aria-live="polite">Aplikasi belum terhubung ke endpoint MCP.</p>
+      <div class="mt5ButtonRow">
+       <button id="mcpTestMarket" type="button" class="subtleButton">Uji Data Akun MCP</button>
+       <button id="mcpOpenChart" type="button" class="subtleButton">Buka Simbol di Chart MCP</button>
+      </div>
+      <p id="mcpTestResult" class="mcpStatus" role="status">Server terhubung belum tentu berarti terminal MT5 tersedia. Uji data broker setelah MT5 aktif.</p>
+      <p class="mcpHelp">HTTP tanpa enkripsi hanya diizinkan untuk localhost. Gunakan HTTPS untuk endpoint jaringan internal lain. API key hanya disimpan selama aplikasi terbuka dan dirotasi saat server lokal dimulai ulang. Tidak ada endpoint order_send.</p>
+     </div>
+     <h3>MT5 MCP Server (read only) · stdio alternatif</h3>
     <p>Tool tersedia: account, symbols, ticker, candles, positions, preview_order. AI/MCP tidak dapat mengirim order BUY atau SELL.</p>
     <label for="mt5McpCommand">Local stdio command</label>
     <textarea id="mt5McpCommand" rows="3" readonly spellcheck="false"></textarea>
@@ -347,7 +372,7 @@
 
  <div class="settingsHint"><strong>Data &amp; privacy</strong><p>Token Exness dan API key model hanya disimpan selama aplikasi terbuka. Watchlist dan akun paper trading tersimpan lokal. Pengaturan instalasi model tetap berada di Ollama Windows.</p></div>
 </section>
-  <footer>DESKTOP PREVIEW v0.8 · Broker MT5 market data and confirmed manual orders · AI/MCP read-only. <span class="tvAttribution">Chart engine: <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">Lightweight Charts™ by TradingView</a></span></footer>
+  <footer>DESKTOP PREVIEW v0.9 · Internal MCP server with API key · AI/MCP read-only · MT5 manual order confirmation. <span class="tvAttribution">Chart engine: <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">Lightweight Charts™ by TradingView</a></span></footer>
  </main>
 </div>
 </div>
@@ -364,6 +389,7 @@
   <button data-search-provider="BIQUOTE" type="button">BiQuote</button>
   <button data-search-provider="EXNESS" type="button">Exness Gateway</button>
   <button data-search-provider="MT5" type="button">MT5 Terminal</button>
+  <button data-search-provider="MCP" type="button">MT5 via MCP</button>
  </div>
  <div class="tvSearchResultsHeading"><span>SYMBOL</span><span>PROVIDER</span></div>
  <div id="tvSearchResults" class="tvSearchResults"></div>
