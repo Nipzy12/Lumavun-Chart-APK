@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('lumavun',Object.freeze({
  configureAi:(config)=>ipcRenderer.invoke('lumavun:ai:configure',config),
  analyzeAi:(provider,symbol,interval)=>ipcRenderer.invoke('lumavun:ai:analyze',{provider,symbol,interval}),
  analyzeVision:(provider,symbol,interval,imageDataUrl)=>ipcRenderer.invoke('lumavun:ai:analyze',{provider,symbol,interval,imageDataUrl}),
+ saveChartPng:(dataUrl)=>ipcRenderer.invoke('lumavun:chart:save-png',dataUrl),
  localAiStatus:()=>ipcRenderer.invoke('lumavun:local-ai:status'),
  installLocalRuntime:()=>ipcRenderer.invoke('lumavun:local-ai:install-runtime'),
  startLocalRuntime:()=>ipcRenderer.invoke('lumavun:local-ai:start-runtime'),

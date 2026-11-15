@@ -1,4 +1,4 @@
-# LUMAVUN Chart Desktop: Windows Preview v0.5
+# LUMAVUN Chart Desktop: Windows Preview v0.6
 
 This is a standalone Electron app **ported from the LUMAVUN Chart Android codebase** (Kotlin + Jetpack Compose). It is not a binary APK-to-EXE converter, and **not yet at feature parity** with Android.
 
@@ -100,3 +100,27 @@ The model-installer IPC exposes only fixed operations to detect the local runtim
 Existing API keys remain in main-process memory, and neither AI inference nor model installation can submit broker orders.
 
 GitHub Actions runs unit tests for the installer, Windows Electron multipage UI smoke tests, and NSIS/portable EXE packaging. Live runtime installation and model downloads must still be validated manually on an actual Windows device; mock tests never install programs during CI.
+
+
+## SUPERVIEW v0.6: Professional multi-panel chart workspace
+
+The Chart page has been rebuilt as an original **TradingView-inspired** desktop terminal, preserving LUMAVUN's name and independent code. It is not a reproduction of TradingView branding or the proprietary Supercharts platform. A 1:1 implementation of all TradingView features, broker links, licensed data feeds, and Pine execution is not available in this release.
+
+Working controls in this initial workspace:
+- Dense Supercharts-style symbol/timeframe/indicator toolbar, chart-style controls (candles, line, area), watchlist and actual market-details pane, theme, fullscreen and right-pane toggle.
+- EMA20/50, SMA200, Bollinger Bands 20/2, anchored-to-loaded-data VWAP and optional volume histogram via Lightweight Charts 5 public API.
+- Price crosshair OHLC strip, visible-range presets, indexed-% Binance USDT comparison overlay.
+- Interactive horizontal lines, two-point trendlines, Fibonacci levels and price annotations. Undo/redo, Object Tree and chart-specific local persistence.
+- Local, selected-symbol price threshold alerts checked every refresh while the desktop application is running (no OS/cloud notifications when closed).
+- EMA 9/21 long/flat spot strategy test on loaded real OHLC close prices, assuming $1000, 10 bps fee per side, no spread/slippage or tick execution. These results are not a historical verified backtest across missing data or proof of profits.
+- Notes per symbol/timeframe and saved chart drawings. Export PNG only through a user-approved save dialog with validated PNG bounds.
+
+### Feature boundaries and non-parity
+There is no Pine Script runtime or compatibility with published community Pine scripts, deep historical replay, integrated exchange/broker order management, proprietary screener/news/calendar data, social features, cloud watchlist syncing, or the complete TradingView indicator/drawing catalog. Neither a visual resemblance nor individual indicators imply full TradingView capability. Existing LUMAVUN AI and virtual paper trading remain on separate pages; they do not submit real orders.
+
+This initial chart workspace uses data providers already implemented in the repository. When a market feed is inaccessible, the chart shows an error, not invented candles. Watchlist and alerts are local only. Screenshot artifacts from CI may include explicitly labelled synthetic fixtures for UI testing, not live quotes. Always independently verify market prices.
+
+
+### Library attribution
+
+LUMAVUN Superview is independent software. Charts use the open-source Lightweight Charts™ library, with required attribution to TradingView. The desktop package includes `NOTICE` and the app footer links to https://www.tradingview.com/. TradingView names and product branding do not represent an endorsement of LUMAVUN.
