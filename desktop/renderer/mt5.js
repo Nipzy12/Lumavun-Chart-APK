@@ -222,7 +222,7 @@
    'Server internal belum dijalankan. Kunci dibuat saat tombol Start ditekan.');
   mcpMessage('mcpRemoteStatus',remote.connected?
    (remote.mode==='MT5_NATIVE'?'MCP MT5 BAWAAN · ':'MCP LUMAVUN · ')+
-   'Terhubung: '+remote.url+' · Tool baca-saja: '+remote.tools.join(', '):
+   'Aplikasi terhubung: '+remote.url+' · Tool baca-saja: '+remote.tools.join(', '):
    'Belum terhubung ke endpoint MCP. Mulai server lokal atau masukkan URL dan API key.');
   el('mcpConnectLocal').disabled=!local.running||mcpBusy;
   el('mcpStop').disabled=!local.running||mcpBusy;
