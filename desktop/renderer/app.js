@@ -3,10 +3,14 @@ const core=window.LumavunIndicators,insights=window.LumavunInsight,paper=window.
 const byId=id=>document.getElementById(id);
 const storageKey='lumavun-chart-desktop-v2',paperKey='lumavun-chart-paper-v2';
 const defaultWatchlist=[{provider:'BINANCE',symbol:'BTCUSDT'},{provider:'BINANCE',symbol:'ETHUSDT'},{provider:'BINANCE',symbol:'SOLUSDT'},{provider:'BIQUOTE',symbol:'XAUUSD'}];
-const providers=['BINANCE','BIQUOTE','EXNESS'];
+const providers=['BINANCE','BIQUOTE','EXNESS','MT5'];
 function normalizeWatchItem(v) {
  const item=typeof v==='string'?{symbol:v,provider:'BINANCE'}:v;
  if(!item||!providers.includes(item.provider))return null;
+ if(item.provider==='MT5'){
+  const sym=String(item.symbol||'').trim();
+  return /^[A-Za-z0-9._-]{1,32}$/.test(sym)?{provider:'MT5',symbol:sym}:null;
+ }
  const symbol=String(item.symbol||'').trim().toUpperCase().replace(/[\/_\-\s]/g,'');
  if(!/^[A-Z0-9.]{1,20}$/.test(symbol))return null;
  if(item.provider==='BINANCE'&&(!symbol.endsWith('USDT')||symbol.length<5||symbol.includes('.')))return null;
@@ -55,7 +59,7 @@ function displaySymbol(symbol){if(symbol.endsWith('USDT'))return symbol.slice(0,
 const watchQuotes=new Map();
 let watchUpdateBusy=false;
 function rememberQuote(provider,symbol,q){
- const last=Number(q?.lastPrice),change=Number(q?.priceChangePercent);
+ const last=Number(q?.lastPrice),change=q?.priceChangePercent==null?null:Number(q.priceChangePercent);
  if(!Number.isFinite(last)||last<=0)return;
  watchQuotes.set(provider+':'+symbol,{last,change:Number.isFinite(change)?change:null,at:Date.now()});
 }
@@ -83,7 +87,7 @@ async function refreshWatchlistPrices(){
 function renderWatchlist(){
  const root=byId('watchlist');root.replaceChildren();byId('watchCount').textContent=state.watchlist.length+' PAIRS';
  byId('marketProvider').value=state.provider;
- byId('providerBadge').textContent=state.provider==='BINANCE'?'BINANCE SPOT':state.provider==='BIQUOTE'?'BIQUOTE':'EXNESS GATEWAY';
+ byId('providerBadge').textContent=state.provider==='BINANCE'?'BINANCE SPOT':state.provider==='BIQUOTE'?'BIQUOTE':state.provider==='MT5'?'MT5 TERMINAL':'EXNESS GATEWAY';
  for(const item of state.watchlist){
   const row=document.createElement('div');row.className='watchItem'+(item.provider===state.provider&&item.symbol===state.symbol?' active':'');
   const pair=document.createElement('button');pair.type='button';pair.className='pairButton';pair.textContent=displaySymbol(item.symbol);
@@ -100,7 +104,7 @@ function renderWatchlist(){
   const price=document.createElement('span');price.className='tvWatchPrice';
   price.textContent=q?.last>0?fmt(q.last):'—';
   const delta=document.createElement('span');delta.className='tvWatchChange';
-  delta.textContent=Number.isFinite(q?.change)?(q.change>0?'+':'')+q.change.toFixed(2)+'%':'—';
+  delta.textContent=q?.change!=null&&Number.isFinite(q.change)?(q.change>0?'+':'')+q.change.toFixed(2)+'%':'—';
   if(q?.change>0)delta.classList.add('positive');
   else if(q?.change<0)delta.classList.add('negative');
   row.append(pair,price,delta,remove);root.append(row);
@@ -170,7 +174,7 @@ async function refresh(fit=false){
   byId('rsiValue').textContent=rsi===null?'—':rsi.toFixed(2);
   byId('supportValue').textContent=fmt(sr.support[0]);byId('resistanceValue').textContent=fmt(sr.resistance[0]);
   byId('lastPrice').textContent=fmt(quote.lastPrice);
-  const percent=Number(quote.priceChangePercent);
+  const percent=quote.priceChangePercent==null?NaN:Number(quote.priceChangePercent);
   byId('priceChange').textContent=Number.isFinite(percent)?(percent>0?'+':'')+percent.toFixed(2)+'% (provider)':'—';
   byId('priceChange').className='change '+(percent>0?'up':percent<0?'down':'');
   byId('lastUpdate').textContent='Diperbarui '+new Date().toLocaleTimeString('id-ID')+' · '+provider+(quote.marketOpen===false?' · MARKET CLOSED':'');
@@ -378,7 +382,7 @@ setInterval(()=>{if(!busy&&!document.hidden)refresh(false);},45000);
 
 
 /* v0.5 navigable pages and in-app local model installer */
-const ROUTES=new Set(['chart','ai','models','paper','settings']);
+const ROUTES=new Set(['chart','ai','models','paper','mt5','settings']);
 let currentPage='chart';
 function showPage(page) {
  if(!ROUTES.has(page))return;

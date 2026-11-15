@@ -146,7 +146,7 @@ function onCandles(bars,quote){
  renderOhlc(bars.at(-1));$('tvCrosshairDate').textContent=formatDate(bars.at(-1).time);
  $('tvDetailsSymbol').textContent=state.symbol;
  $('tvSymbolLabel').textContent=state.symbol;
- $('tvSideChange').textContent=Number.isFinite(Number(quote.priceChangePercent))?Number(quote.priceChangePercent).toFixed(2)+'%':'—';
+ $('tvSideChange').textContent=quote.priceChangePercent!=null&&Number.isFinite(Number(quote.priceChangePercent))?Number(quote.priceChangePercent).toFixed(2)+'%':'—';
  $('tvSideHigh').textContent=fmt(quote.highPrice);
  $('tvSideLow').textContent=fmt(quote.lowPrice);
  $('tvSideVolume').textContent=Number.isFinite(Number(quote.volume))?new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:2}).format(Number(quote.volume)):'—';
@@ -425,6 +425,7 @@ $('tvRailObjects').addEventListener('click',()=>{showPage('chart');changeDock('o
 $('tvRailAi').addEventListener('click',()=>showPage('ai'));
 $('tvRailPaper').addEventListener('click',()=>showPage('paper'));
 $('tvRailModels').addEventListener('click',()=>showPage('models'));
+$('tvRailMt5').addEventListener('click',()=>showPage('mt5'));
 $('tvRailSettings').addEventListener('click',()=>showPage('settings'));
 function enableResizable(handle,axis){
  handle.addEventListener('pointerdown',event=>{
@@ -458,7 +459,7 @@ let searchProvider='BINANCE',searchBusy=false;
 const candidates={
  BINANCE:['BTCUSDT','ETHUSDT','SOLUSDT','BNBUSDT','XRPUSDT','DOGEUSDT','ADAUSDT','LINKUSDT'],
  BIQUOTE:['XAUUSD','EURUSD','GBPUSD','USDJPY'],
- EXNESS:[]
+ EXNESS:[],MT5:['XAUUSD','EURUSD','GBPUSD','USDJPY']
 };
 function renderSymbolSuggestions(){
  const query=$('tvSearchQuery').value.trim().toUpperCase().replace(/[\/_\-\s]/g,'');
@@ -479,7 +480,7 @@ function renderSymbolSuggestions(){
  }
 }
 function setSearchProvider(provider){
- if(!['BINANCE','BIQUOTE','EXNESS'].includes(provider))return;
+ if(!['BINANCE','BIQUOTE','EXNESS','MT5'].includes(provider))return;
  searchProvider=provider;
  document.querySelectorAll('[data-search-provider]').forEach(btn=>btn.classList.toggle('active',btn.dataset.searchProvider===provider));
  renderSymbolSuggestions();
@@ -501,7 +502,7 @@ $('tvSearchForm').addEventListener('submit',e=>{
 });
 async function chooseSymbol(raw,provider){
  if(searchBusy)return;
- const symbol=String(raw||'').trim().toUpperCase().replace(/[\/_\-\s]/g,'');
+ const symbol=provider==='MT5'?String(raw||'').trim():String(raw||'').trim().toUpperCase().replace(/[\/_\-\s]/g,'');
  const item=normalizeWatchItem({provider,symbol});
  if(!item){toast('Invalid symbol for selected provider.');return;}
  searchBusy=true;
