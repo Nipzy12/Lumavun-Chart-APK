@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const {sma,bollinger,vwap,ema,backtest}=require('./supercharts.cjs');
+const {sma,bollinger,vwap,ema,backtest}=require('./supercharts.js');
 test('SMA and EMA use initial-period seed',()=>{assert.deepEqual(sma([1,2,3,4],2),[null,1.5,2.5,3.5]);assert.deepEqual(ema([1,2,3,4,5],3),[null,null,2,3,4]);});
 test('Bollinger bands narrow on flat candles',()=>{const b=bollinger(Array(25).fill(100),20,2);assert.equal(b.middle.at(-1),100);assert.equal(b.upper.at(-1),100);assert.equal(b.lower.at(-1),100);});
 test('VWAP uses actual volume not fabricated price',()=>{const data=[{high:12,low:8,close:10,volume:2},{high:22,low:18,close:20,volume:1}];assert.deepEqual(vwap(data),[10,40/3]);});

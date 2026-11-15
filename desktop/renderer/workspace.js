@@ -49,7 +49,7 @@ function setStyle(type){
  candleSeries.applyOptions({visible:type==='candles'});
  primary.applyOptions({visible:type==='line'});
  area.applyOptions({visible:type==='area'});
- $('tvChartType').value=type;persist();
+ $('tvChartType').value=type;persist();if(marketBars.length)renderDrawings();
 }
 function setTheme(theme){
  cfg.theme=theme;document.documentElement.dataset.tvTheme=theme;
@@ -99,7 +99,15 @@ function onCandles(bars,quote){
  updateNotes();
  if(compareSymbol)refreshCompare();
 }
-function onMarketError(){marketBars=[];quoteData=null;$('tvOpen').textContent='—';$('tvHigh').textContent='—';$('tvLow').textContent='—';$('tvClose').textContent='—';}
+function onMarketError(){
+ marketBars=[];quoteData=null;
+ primary.setData([]);area.setData([]);
+ for(const part of Object.values(overlays))part.setData([]);
+ if(compareSeries)compareSeries.setData([]);
+ clearRenderedDrawings();drawObjects=[];
+ $('tvOpen').textContent='—';$('tvHigh').textContent='—';$('tvLow').textContent='—';$('tvClose').textContent='—';
+ $('tvSideHigh').textContent='—';$('tvSideLow').textContent='—';$('tvSideChange').textContent='—';$('tvSideVolume').textContent='—';
+}
 function renderOhlc(b){
  if(!b)return;
  for(const [field,id] of [['open','tvOpen'],['high','tvHigh'],['low','tvLow'],['close','tvClose']]){
@@ -138,7 +146,7 @@ function saveIndicators(){persist();}
 $('tvRanges').querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>applyRange(button.dataset.bars)));
 document.querySelectorAll('[data-dock]').forEach(b=>b.addEventListener('click',()=>changeDock(b.dataset.dock)));
 $('tvTheme').addEventListener('click',()=>setTheme(cfg.theme==='dark'?'light':'dark'));
-$('tvSymbolOpen').addEventListener('click',()=>{$('symbolInput').focus();$('symbolInput').select();toast('Masukkan pair pada Symbol Search di watchlist.');});
+$('tvSymbolOpen').addEventListener('click',()=>{document.querySelector('.workspace').classList.remove('tvRightClosed');$('symbolInput').focus();$('symbolInput').select();toast('Masukkan pair pada Symbol Search di watchlist.');});
 $('tvToggleRight').addEventListener('click',()=>{document.querySelector('.workspace').classList.toggle('tvRightClosed');});
 $('tvFullscreen').addEventListener('click',async()=>{
  try{
@@ -184,6 +192,7 @@ async function refreshCompare(){
   if(!compareSeries)compareSeries=chart.addSeries(chartApi.LineSeries,{color:'#f2bc53',lineWidth:2,priceScaleId:'compare',priceFormat:{type:'percent'},priceLineVisible:false});
   compareSeries.setData(rows.map(c=>({time:c.time,value:(c.close/base-1)*100})));
   $('tvCompareActive').textContent='Overlay '+symbol+' · % from first loaded bar';
+  const remove=document.createElement('button');remove.type='button';remove.textContent='Remove';remove.addEventListener('click',clearCompare);$('tvCompareActive').append(remove);
  }catch(e){$('tvCompareActive').textContent='Compare unavailable: '+String(e.message||e);}
 }
 function clearCompare(){
@@ -220,7 +229,7 @@ document.querySelectorAll('[data-draw]').forEach(button=>button.addEventListener
 function clearRenderedDrawings(){
  for(const item of drawn){
   try{if(item.kind==='line')chart.removeSeries(item.ref);
-    else candleSeries.removePriceLine(item.ref);}catch{}
+    else item.owner.removePriceLine(item.ref);}catch{}
  }
  drawn=[];
 }
@@ -231,6 +240,7 @@ function drawRecord(record){
  const [a,b]=anchors;
  if(!Array.isArray(a)||a.length<2||!Number.isFinite(a[1])||a[1]<=0)return;
  const color=record.type==='fib'?'#ecb879':record.type==='note'?'#aa9afc':'#7aa6f8';
+ const priceOwner=cfg.type==='candles'?candleSeries:cfg.type==='line'?primary:area;
  if(record.type==='trend'){
   if(!b||!Number.isFinite(b[1])||a[0]===b[0])return;
   const s=chart.addSeries(chartApi.LineSeries,{color,lineWidth:2,lastValueVisible:false,priceLineVisible:false});
@@ -243,8 +253,8 @@ function drawRecord(record){
   [{price:a[1],title:record.type==='note'?String(record.title||'Note').slice(0,20):'H-Line'}];
  for(const level of levels){
   if(!Number.isFinite(level.price)||level.price<=0)continue;
-  const line=candleSeries.createPriceLine({price:level.price,color,lineWidth:1,lineStyle:chartApi.LineStyle.Dashed,axisLabelVisible:true,title:level.title});
-  drawn.push({kind:'price',ref:line});
+  const line=priceOwner.createPriceLine({price:level.price,color,lineWidth:1,lineStyle:chartApi.LineStyle.Dashed,axisLabelVisible:true,title:level.title});
+  drawn.push({kind:'price',ref:line,owner:priceOwner});
  }
 }
 function renderDrawings(){

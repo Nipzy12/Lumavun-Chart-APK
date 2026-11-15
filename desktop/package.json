@@ -10,7 +10,7 @@
     "test": "node --test core/*.test.cjs",
     "prepare:assets": "node scripts/copy-chart.cjs",
     "dist:win": "npm run prepare:assets && electron-builder --win nsis portable --x64",
-    "check:syntax": "node --check main.cjs && node --check preload.cjs && node --check renderer/app.js && node --check core/market.cjs && node --check core/paper.js && node --check core/insight.js && node --check core/ai-analyst.cjs && node --check core/vision.cjs && node --check tests/ui-smoke.cjs && node --check core/local-ai-manager.cjs && node --check core/supercharts.cjs && node --check renderer/workspace.js",
+    "check:syntax": "node --check main.cjs && node --check preload.cjs && node --check renderer/app.js && node --check core/market.cjs && node --check core/paper.js && node --check core/insight.js && node --check core/ai-analyst.cjs && node --check core/vision.cjs && node --check tests/ui-smoke.cjs && node --check core/local-ai-manager.cjs && node --check core/supercharts.js && node --check renderer/workspace.js",
     "test:ui": "npm run prepare:assets && node tests/ui-smoke.cjs"
   },
   "dependencies": {

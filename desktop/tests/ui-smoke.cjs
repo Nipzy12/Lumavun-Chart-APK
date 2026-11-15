@@ -15,7 +15,7 @@ async function main(){
   assert.equal(await page.locator('#pageNav button').count(),5);
   assert.equal(await page.locator('#page-ai').isVisible(),false);
   assert.equal(await page.locator('#tvWorkspace').isVisible(),true);
-  assert.equal(await page.locator('#tvDrawRail').count(),0); // rail uses CSS class
+  assert.equal(await page.evaluate(()=>typeof window.LumaStudies?.backtest),'function');
   assert.equal(await page.locator('.tvDrawRail [data-draw]').count(),5);
   assert.equal(await page.locator('#tvChartType').count(),1);
   await page.locator('#tvIndicatorsOpen').click();
@@ -87,10 +87,10 @@ async function main(){
   await page.locator('#tvBacktest').click();
   assert.ok((await page.locator('.tvBacktestMetric').count())>=5,'Strategy metrics should be rendered from test candles.');
   await page.locator('[data-dock="overview"]').click();
-  await page.locator('#marketProvider').selectOption('BIQUOTE');
-  assert.match(await page.locator('#providerBadge').textContent(),/BIQUOTE/);
   fs.mkdirSync(path.join(root,'artifacts'),{recursive:true});
   await page.screenshot({path:path.join(root,'artifacts','desktop-ui-smoke.png'),fullPage:true});
+  await page.locator('#marketProvider').selectOption('BIQUOTE');
+  assert.match(await page.locator('#providerBadge').textContent(),/BIQUOTE/);
   if(errors.length)throw Error('UI JavaScript errors: '+errors.join('; ').slice(0,500));
   console.log('PASS Electron UI smoke: Superview toolbar, indicators, theme, drawing tools, notes, alert, EMA tester, five-page navigation, AI and chart canvas.');
  }finally{if(app)await app.close();}
