@@ -373,3 +373,14 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .main>.routePage:not(.tvPage){max-height:calc(100vh - 40px);overflow-y:auto}
 @media(max-width:1170px){.topbar .pageNav{gap:0}.topbar .navTab{font-size:10px;padding:5px 7px}.topbar .navTab .tvIcon{width:13px;height:13px}.workspace{grid-template-columns:minmax(0,1fr) minmax(220px,var(--tv-right-width)) 38px}.tvTopTools{gap:2px}.tvTopTools .tvTextTool{font-size:10px;padding:6px 4px}.tvMarketStrip{gap:6px}.tvOhlcValues span:nth-child(1),.tvOhlcValues span:nth-child(2){display:none}}
 @media(max-width:1010px){.topbar .provider{display:none}.brand{min-width:110px}.topbar .navTab{padding:5px 6px}.tvFrames button{padding:6px 5px}.tvTextTool{max-width:90px;overflow:hidden}.tvSaveTool{padding:5px 7px}.tvChartRange{padding:0 5px}.tvRangeMeta #lastUpdate{display:none}.sidebar .watchItem{grid-template-columns:minmax(0,1fr) 62px 48px 12px;gap:0}}
+
+/* v0.7 screenshot review corrections: sidebar resize handle never participates in flow */
+.workspace .sidebar{position:relative}
+#tvSidebarResize{
+ position:absolute!important;
+ top:0;left:0;bottom:0;height:auto!important;min-height:0!important;
+ width:5px;float:none!important;margin:0!important;display:block!important;z-index:12;
+}
+.tvTopTools{scrollbar-width:none}
+.tvTopTools::-webkit-scrollbar{display:none}
+.tvWatchHead,.tvWatchColumns,.sidebar .watchlist,.sidebar .tvSideQuote{position:relative;z-index:1}
