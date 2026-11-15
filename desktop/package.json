@@ -33,7 +33,8 @@
       "preload.cjs",
       "core/**/*",
       "renderer/**/*",
-      "package.json"
+      "package.json",
+      "NOTICE"
     ],
     "win": {
       "target": [

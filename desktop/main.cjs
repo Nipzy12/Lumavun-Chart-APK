@@ -1,5 +1,5 @@
 'use strict';
-const {app,BrowserWindow,ipcMain,dialog} = require('electron');
+const {app,BrowserWindow,ipcMain,dialog,shell} = require('electron');
 const fs=require('node:fs/promises');
 const path=require('node:path');
 const market=require('./core/market.cjs');
@@ -171,8 +171,12 @@ app.whenReady().then(()=>{
    contextIsolation:true,sandbox:true,webSecurity:true
   }
  });
- window.webContents.setWindowOpenHandler(()=>({action:'deny'}));
- window.webContents.on('will-navigate',event=>event.preventDefault());
+ const openAttribution=url=>{
+  if(url==='https://www.tradingview.com/'||url.startsWith('https://www.tradingview.com/?'))
+   shell.openExternal('https://www.tradingview.com/').catch(()=>{});
+ };
+ window.webContents.setWindowOpenHandler(({url})=>{openAttribution(url);return {action:'deny'};});
+ window.webContents.on('will-navigate',(event,url)=>{event.preventDefault();openAttribution(url);});
  window.loadFile(path.join(__dirname,'renderer','index.html'));
 });
 app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit();});

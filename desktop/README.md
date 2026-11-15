@@ -119,3 +119,8 @@ Working controls in this initial workspace:
 There is no Pine Script runtime or compatibility with published community Pine scripts, deep historical replay, integrated exchange/broker order management, proprietary screener/news/calendar data, social features, cloud watchlist syncing, or the complete TradingView indicator/drawing catalog. Neither a visual resemblance nor individual indicators imply full TradingView capability. Existing LUMAVUN AI and virtual paper trading remain on separate pages; they do not submit real orders.
 
 This initial chart workspace uses data providers already implemented in the repository. When a market feed is inaccessible, the chart shows an error, not invented candles. Watchlist and alerts are local only. Screenshot artifacts from CI may include explicitly labelled synthetic fixtures for UI testing, not live quotes. Always independently verify market prices.
+
+
+### Library attribution
+
+LUMAVUN Superview is independent software. Charts use the open-source Lightweight Charts™ library, with required attribution to TradingView. The desktop package includes `NOTICE` and the app footer links to https://www.tradingview.com/. TradingView names and product branding do not represent an endorsement of LUMAVUN.

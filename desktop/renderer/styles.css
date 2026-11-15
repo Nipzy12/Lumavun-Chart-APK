@@ -237,3 +237,5 @@ html[data-tv-theme=light] .tvMetric{background:#f7f9fc;border-color:#e6eaf0}
 html[data-tv-theme=light] .tvMetric strong,html[data-tv-theme=light] .tvLiveQuote #lastPrice{color:#364153}
 @media(max-width:1300px){.tvOhlcValues{gap:5px}.tvDock{flex-basis:194px}.tvTextTool{padding:6px}.tvFrames button{padding:6px}}
 @media(max-width:1050px){.workspace{grid-template-columns:minmax(0,1fr) 225px}.tvOhlcValues span:nth-child(1),.tvOhlcValues span:nth-child(2){display:none}.tvTextTool{font-size:10px}.tvMarketStrip{padding:4px 8px}.tvSummaryGrid{gap:5px}.tvMetric{padding:7px}}
+
+.tvAttribution{display:inline-block;margin-left:14px;color:#8491a4}.tvAttribution a{color:#93b3f8;text-decoration:none}.tvAttribution a:hover{text-decoration:underline}
