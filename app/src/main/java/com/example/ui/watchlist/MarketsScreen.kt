@@ -1,5 +1,6 @@
 package com.example.ui.watchlist
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -203,6 +204,11 @@ fun MarketsScreen(
         if (showAddSymbolQuickList) runCatching { searchFocusRequester.requestFocus() }
     }
     var collapsedWatchlistGroups by remember { mutableStateOf(emptySet<InstrumentCategory>()) }
+    BackHandler(enabled = showAddSymbolQuickList || searchQuery.isNotBlank()) {
+        showAddSymbolQuickList = false
+        onSearchQueryChange("")
+        onSelectCategory(InstrumentCategory.ALL)
+    }
 
     val watchlistSymbolsSet = remember(watchlist) {
         watchlist.map { it.symbol.uppercase(Locale.US) }.toSet()
@@ -817,6 +823,7 @@ fun MarketsScreen(
                                 if (item.status.equals("TRADING", ignoreCase = true)) {
                                     if (!inWatchlist) onAddMarketInstrument(item)
                                     showAddSymbolQuickList = false
+                                    onSearchQueryChange("")
                                     onSelectMarketInstrumentForChart(item)
                                 } else {
                                     onAddMarketInstrument(item) // Validate candidate against provider first
@@ -1014,6 +1021,34 @@ fun MarketsScreen(
                                 },
                                 onRemove = { handleDeleteWithUndo(item.symbol) }
                             )
+                                }
+                            }
+                        }
+                        item(key = "watchlist_add_symbol_footer") {
+                            Box(
+                                modifier = Modifier.fillMaxWidth()
+                                    .padding(vertical = 18.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Surface(
+                                    color = CyanAccent.copy(alpha = 0.12f),
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier
+                                        .border(
+                                            1.dp,
+                                            CyanAccent.copy(alpha = 0.32f),
+                                            RoundedCornerShape(10.dp)
+                                        )
+                                        .clickable { showAddSymbolQuickList = true }
+                                        .testTag("watchlist_add_symbol_footer")
+                                ) {
+                                    Text(
+                                        text = "+ Tambah Simbol",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = CyanAccent,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 19.dp, vertical = 10.dp)
+                                    )
                                 }
                             }
                         }
