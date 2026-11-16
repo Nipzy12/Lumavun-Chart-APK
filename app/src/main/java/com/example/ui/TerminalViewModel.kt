@@ -2256,11 +2256,11 @@ class TerminalViewModel(
                     //   while still preserving any live ActiveSetup in the background / activeSetup state!
                     // - In Auto mode, preserve activeSetup's AI result when an active setup is live so WAIT doesn't overwrite it.
                     val effectiveAiDisplay = if (!isAutomaticTrigger) {
-                        rawValidated
+                        reviewed
                     } else {
                         finalActiveSetup?.sourceAiResult
                             ?: reconciliation.assessment.latestAiResult
-                            ?: rawValidated
+                            ?: reviewed
                     }
 
                     _uiState.update {
@@ -2272,7 +2272,7 @@ class TerminalViewModel(
                             activeSetup = finalActiveSetup,
                             activeSignalOverlay = overlay,
                             isCurrentSignalSaved = recordedId > 0L || finalActiveSetup != null,
-                            activeAiProviderBadge = outcome.activeProviderBadge,
+                            activeAiProviderBadge = effectiveAiDisplay.providerBadge,
                             aiErrorMessage = null,
                             aiErrorDetail = null
                         )
