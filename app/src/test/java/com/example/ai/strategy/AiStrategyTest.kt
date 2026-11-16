@@ -129,10 +129,11 @@ class AiStrategyTest {
     }
 
     @Test
-    fun `all eight strategies exist with required stable IDs and defaults`() {
+    fun `all nine strategies exist with required stable IDs and defaults`() {
         val expectedIds = listOf(
             "AI_HYBRID",
             "AI_SMART",
+            "AI_SNR",
             "AI_SMC",
             "AI_ICT",
             "AI_SNIPER",
@@ -142,7 +143,7 @@ class AiStrategyTest {
         )
         val actualIds = AiStrategy.entries.map { it.id }
         assertEquals(expectedIds, actualIds)
-        assertEquals(8, AiStrategy.entries.size)
+        assertEquals(9, AiStrategy.entries.size)
         assertEquals(AiStrategy.AI_HYBRID, AiStrategy.DEFAULT)
 
         AiStrategy.entries.forEach { strategy ->
