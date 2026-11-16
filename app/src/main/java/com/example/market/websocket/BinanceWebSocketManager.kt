@@ -194,6 +194,7 @@ class BinanceWebSocketManager(
         }
         webSocket = null
         _connectionStatus.value = WsConnectionStatus.DISCONNECTED
+        _statusBannerMessage.value = null
     }
 
     private fun buildStreamQuery(
@@ -257,14 +258,20 @@ class BinanceWebSocketManager(
     private fun createSocketListener(boundQuery: String): WebSocketListener {
         return object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
-                if (boundQuery != currentStreamQuery) return
+                if (boundQuery != currentStreamQuery ||
+                    isIntentionalDisconnect.get() || !isForeground.get() ||
+                    this@BinanceWebSocketManager.webSocket !== webSocket
+                ) return
                 reconnectAttempts.set(0)
                 _connectionStatus.value = WsConnectionStatus.LIVE
                 _statusBannerMessage.value = null
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
-                if (boundQuery != currentStreamQuery) return
+                if (boundQuery != currentStreamQuery ||
+                    isIntentionalDisconnect.get() || !isForeground.get() ||
+                    this@BinanceWebSocketManager.webSocket !== webSocket
+                ) return
                 if (_connectionStatus.value != WsConnectionStatus.LIVE) {
                     reconnectAttempts.set(0)
                     _connectionStatus.value = WsConnectionStatus.LIVE
@@ -281,14 +288,16 @@ class BinanceWebSocketManager(
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                if (boundQuery != currentStreamQuery || isIntentionalDisconnect.get() || !isForeground.get()) {
+                if (boundQuery != currentStreamQuery || isIntentionalDisconnect.get() || !isForeground.get() ||
+                    this@BinanceWebSocketManager.webSocket !== webSocket) {
                     return
                 }
                 scheduleReconnect(boundQuery)
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                if (boundQuery != currentStreamQuery || isIntentionalDisconnect.get() || !isForeground.get()) {
+                if (boundQuery != currentStreamQuery || isIntentionalDisconnect.get() || !isForeground.get() ||
+                    this@BinanceWebSocketManager.webSocket !== webSocket) {
                     return
                 }
                 // Rotate endpoint on failure (e.g., if regional firewall blocks one host)
