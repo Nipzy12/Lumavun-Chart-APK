@@ -12,14 +12,20 @@ Android Kotlin + Jetpack Compose trading chart, AI Insight, Watchlist and simula
 - Exness symbol availability is shown **only after the configured, enabled gateway returns verified tradable symbols**. No fallback to illustrative catalog on gateway failure.
 - Live trading is **not implemented**. Bot execution remains simulation-only.
 
-## Build APK via GitHub Actions
+## Update-friendly Android APK (permanent release signing)
 
-1. Push the **extracted** project files and `.github/workflows/android-build.yml` to `main`.
-2. Open GitHub **Actions → Build LUMAVUN Android APK → Run workflow** (or simply push to trigger).
-3. When the workflow succeeds, open the run and download **LUMAVUN-Professional-UI-debug** under **Artifacts**.
-4. Unzip the artifact, tap `app-debug.apk` on Android and allow installation from that source if prompted.
+Previous GitHub debug builds used transient debug certificates, so an APK from a new runner could clash with the installed one. LUMAVUN now supports **one permanent app-signing key** and **automatic increasing versionCode**.
 
-If Android warns about incompatible update signatures, back up app data first. An APK signed with the CI runner's debug key may not install over an existing debug APK signed elsewhere.
+**One-time action required:** add the repository secret `LUMAVUN_SIGNING_PASSPHRASE` using the private passphrase file supplied to the repository owner. The public repository includes only an *encrypted* keystore.
+
+1. Visit [GitHub Repository Secrets](https://github.com/Nipzy12/Lumavun-Chart-APK/settings/secrets/actions) and add the named secret.
+2. Start the [Android Actions workflow](https://github.com/Nipzy12/Lumavun-Chart-APK/actions/workflows/android-build.yml) on `main` (or push an update).
+3. Download **LUMAVUN-Update-Signed-APK** from successful runs, extract it and install `app-release.apk`.
+4. For future updates, install only the same permanently signed release artifact. Android will keep existing app data when the versionCode is higher.
+
+**Important:** If an older installed APK has a different signing certificate, **the first migration still requires the original key or a backup followed by uninstall/reinstall**. No workflow can bypass Android's signature verification.
+
+Full steps, backup cautions and recovery: [docs/android-updates.md](docs/android-updates.md).
 
 ## Exness gateway contract (market data only)
 
