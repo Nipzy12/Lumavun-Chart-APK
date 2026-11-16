@@ -94,6 +94,7 @@ jobs:
           fi
           "$AAPT" dump badging "$APK" | grep '^package:'
           "$AAPT" dump badging "$APK" | grep -q "name='com.aistudio.nexsyncailite.qxvrtk'"
+          "$AAPT" dump badging "$APK" | grep -q "versionCode='$LUMAVUN_VERSION_CODE'"
           echo "### Release signed APK passed signature, identity and certificate checks" >> "$GITHUB_STEP_SUMMARY"
           echo "Certificate fingerprint SHA-256: $EXPECTED" >> "$GITHUB_STEP_SUMMARY"
       - name: Upload update-safe signed APK
