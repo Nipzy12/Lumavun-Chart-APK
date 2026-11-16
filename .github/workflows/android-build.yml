@@ -2,7 +2,7 @@ name: Build LUMAVUN Android APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, feature/confirmed-limit-analysis-v8 ]
   workflow_dispatch:
 
 permissions:
