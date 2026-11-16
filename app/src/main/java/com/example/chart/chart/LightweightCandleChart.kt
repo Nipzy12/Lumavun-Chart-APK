@@ -1546,7 +1546,8 @@ private fun DrawScope.drawMainCandlestickChart(
     )
 
     val slotWidth = plotWidth / totalSlotsInViewport.toFloat()
-    val bodyWidth = (slotWidth * 0.74f).coerceIn(2f, 22f)
+    // At wide zoom-out, bodies may be <2px: avoid overlapping adjacent candles.
+    val bodyWidth = (slotWidth * 0.74f).coerceIn(0.8f, 22f)
     val volumeOverlayMaxH = totalHeight * 0.125f
 
     clipRect(left = 0f, top = 0f, right = plotWidth, bottom = totalHeight) {
