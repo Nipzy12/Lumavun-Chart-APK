@@ -11,6 +11,7 @@ import com.example.analysis.smc.SmcLiquiditySweepEngine
 import com.example.analysis.smc.SpreadVolatilityConfig
 import com.example.analysis.smc.SweepDetectionState
 import com.example.analysis.smc.UnavailableSpreadPolicy
+import com.example.analysis.supportResistance.SnrAutoAnalysisEngine
 import com.example.analysis.supportResistance.SupportResistanceEngine.roundPriceCleanly
 import com.example.analysis.technical.MarketTechnicalSnapshot
 import com.example.market.session.TradingSessionEngine
@@ -1044,6 +1045,34 @@ private fun applyStrategySpecificSynthesisRules(
                 else -> {
                     positiveReasons.add(0, "[AI Smart] Evaluating structure under ${snapshot.marketRegime.displayLabel} conditions.")
                 }
+            }
+        }
+        com.example.ai.strategy.AiStrategy.AI_SNR -> {
+            // Validate model output against the exact S/R levels rendered on the chart.
+            val reaction = SnrAutoAnalysisEngine.evaluate(
+                candles = snapshot.recentCandles,
+                supports = snapshot.supportLevels,
+                resistances = snapshot.resistanceLevels,
+                atr14 = snapshot.atr14
+            )
+            val aligned = when (reaction.type) {
+                "SUPPORT_REJECTION", "RESISTANCE_BREAKOUT" -> effDirection == "LONG"
+                "RESISTANCE_REJECTION", "SUPPORT_BREAKDOWN" -> effDirection == "SHORT"
+                else -> false
+            }
+            if (!reaction.shouldAnalyze || !aligned) {
+                waitReasons.add(
+                    "[AI SNR] WAIT: no aligned confirmed-candle reaction at actual S/R levels (" +
+                        reaction.reason + ")."
+                )
+                effDirection = "WAIT"
+                effConfidence = effConfidence.coerceAtMost(49)
+            } else {
+                positiveReasons.add(
+                    0, "[AI SNR] Confirmed " + reaction.type +
+                        " near chart level " + (reaction.level?.let { roundPriceCleanly(it) } ?: 0.0) +
+                        "; final entry still requires spread, structure, and risk validation."
+                )
             }
         }
         com.example.ai.strategy.AiStrategy.AI_SMC -> {
