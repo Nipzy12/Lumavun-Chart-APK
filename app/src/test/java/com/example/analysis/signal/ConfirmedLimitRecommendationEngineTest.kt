@@ -122,6 +122,9 @@ class ConfirmedLimitRecommendationEngineTest {
         assertTrue(proposal.takeProfit.first() > proposal.entryZone.high)
         assertTrue(proposal.reasoning.any { it.contains("Closed candle") })
         assertEquals("CONFIRMED_PENDING_LIMIT", proposal.setupDecisionState)
+        val cached = AiResponseParser.parse(proposal.rawJson)
+        assertNotNull("Pending LIMIT must survive cached analysis reload", cached)
+        assertEquals("BUY LIMIT", cached!!.structuredOrderActionLabel)
     }
 
     @Test fun sellLimitIsPendingAndAbovePriceOnConfirmedResistanceRejection() {
