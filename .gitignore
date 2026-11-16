@@ -68,3 +68,8 @@ Thumbs.db
 *.key
 local.properties
 .aistudio/
+
+# Personal Android release-signing passphrase: NEVER commit
+lumavun-signing-secret.txt
+**/*signing*passphrase*
+**/release-signing*.p12
