@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   android:
-    name: Build debug APK and run tests
+    name: Build, test and sign update APK
     runs-on: ubuntu-latest
     timeout-minutes: 50
     steps:
@@ -35,14 +35,76 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
-      - name: Assemble debug APK
+      - name: Validate encrypted signing key integrity
+        shell: bash
+        run: |
+          echo "f8cf1c0e1fc1c6be34feb750c83074633951fd42d1908cfb37bd8cda541ef380  .github/signing/lumavun-release.jks.enc.b64" | sha256sum -c -
+      - name: Assign increasing Android versionCode
+        shell: bash
+        run: echo "LUMAVUN_VERSION_CODE=$((100000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+      - name: Compile debug APK (CI verification only)
         run: gradle --no-daemon :app:assembleDebug
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: LUMAVUN-Professional-UI-debug
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-          retention-days: 14
       - name: Unit tests
         run: gradle --no-daemon :app:testDebugUnitTest
+      - name: Check permanent signing secret
+        id: signing
+        shell: bash
+        env:
+          SIGNING_PASSPHRASE: ${{ secrets.LUMAVUN_SIGNING_PASSPHRASE }}
+        run: |
+          if [ -n "$SIGNING_PASSPHRASE" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Signing not configured::Set repository secret LUMAVUN_SIGNING_PASSPHRASE. No installable update APK is published until the permanent signing key is configured."
+            echo "### Update APK not published: permanent signing secret is missing" >> "$GITHUB_STEP_SUMMARY"
+            echo "See docs/android-updates.md for one-time setup." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Decrypt permanent keystore to temporary runner storage
+        if: steps.signing.outputs.ready == 'true'
+        shell: bash
+        env:
+          LUMAVUN_SIGNING_PASSPHRASE: ${{ secrets.LUMAVUN_SIGNING_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          umask 077
+          base64 -d .github/signing/lumavun-release.jks.enc.b64 |
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 250000 -out "$RUNNER_TEMP/lumavun-release.p12" -pass env:LUMAVUN_SIGNING_PASSPHRASE
+          echo "LUMAVUN_SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/lumavun-release.p12" >> "$GITHUB_ENV"
+      - name: Build permanently signed release update APK
+        if: steps.signing.outputs.ready == 'true'
+        env:
+          LUMAVUN_SIGNING_PASSWORD: ${{ secrets.LUMAVUN_SIGNING_PASSPHRASE }}
+        run: gradle --no-daemon :app:assembleRelease
+      - name: Verify APK signature, fingerprint and package ID
+        if: steps.signing.outputs.ready == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/release/app-release.apk"
+          APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          AAPT="$ANDROID_HOME/build-tools/36.0.0/aapt"
+          test -s "$APK"
+          "$APKSIGNER" verify --min-sdk-version 24 "$APK"
+          ACTUAL=$("$APKSIGNER" verify --print-certs "$APK" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/ { print $2; exit }' | tr '[:upper:]' '[:lower:]')
+          EXPECTED=$(tr -d '\r\n' < .github/signing/cert-sha256.txt)
+          if [ -z "$ACTUAL" ] || [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::APK signing certificate is not the permanent LUMAVUN certificate"
+            exit 1
+          fi
+          "$AAPT" dump badging "$APK" | grep '^package:'
+          "$AAPT" dump badging "$APK" | grep -q "name='com.aistudio.nexsyncailite.qxvrtk'"
+          echo "### Release signed APK passed signature, identity and certificate checks" >> "$GITHUB_STEP_SUMMARY"
+          echo "Certificate fingerprint SHA-256: $EXPECTED" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload update-safe signed APK
+        if: steps.signing.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: LUMAVUN-Update-Signed-APK
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 90
+      - name: Remove decrypted keystore
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/lumavun-release.p12"
