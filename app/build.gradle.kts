@@ -1,5 +1,13 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
 
+// Stable package identity is mandatory for in-place Android updates.
+// CI assigns an increasing version code; private signing material is supplied at runtime.
+val lumavunBuildVersionCode = System.getenv("LUMAVUN_VERSION_CODE")?.toIntOrNull()?.takeIf { it > 0 } ?: 1
+val lumavunSigningFile = System.getenv("LUMAVUN_SIGNING_KEYSTORE_PATH")?.takeIf { it.isNotBlank() }
+val lumavunSigningPassword = System.getenv("LUMAVUN_SIGNING_PASSWORD")?.takeIf { it.isNotBlank() }
+val lumavunSigningConfigured = lumavunSigningFile != null && lumavunSigningPassword != null
+
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
@@ -16,19 +24,23 @@ android {
     applicationId = "com.aistudio.nexsyncailite.qxvrtk"
     minSdk = 24
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0"
+    versionCode = lumavunBuildVersionCode
+    versionName = if (lumavunBuildVersionCode >= 100_000) {
+      "1.1.${lumavunBuildVersionCode - 100_000}"
+    } else "1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
   signingConfigs {
     create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
-      storeFile = file(keystorePath)
-      storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "upload"
-      keyPassword = System.getenv("KEY_PASSWORD")
+      if (lumavunSigningConfigured) {
+        storeFile = file(lumavunSigningFile!!)
+        storePassword = lumavunSigningPassword
+        keyAlias = "lumavun"
+        keyPassword = lumavunSigningPassword
+        storeType = "PKCS12"
+      }
     }
   }
 
@@ -37,7 +49,11 @@ android {
       isCrunchPngs = false
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      signingConfig = signingConfigs.getByName("release")
+      // Release signing is enabled only after CI decrypts the stable private keystore.
+      // No fallback to an ephemeral debug key for downloadable update APKs.
+      if (lumavunSigningConfigured) {
+        signingConfig = signingConfigs.getByName("release")
+      }
     }
     // Android Gradle Plugin manages a local debug keystore for debug builds.
     debug { }
