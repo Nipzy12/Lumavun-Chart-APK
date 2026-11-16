@@ -317,3 +317,27 @@ GitHub Actions performs Node unit tests for trading metrics and
 model catalog, existing tests, Python mock MT5 tests, Electron
 eight-page UI smoke and screenshot previews. Actual connection
 to a personal MT5 terminal and AI provider cannot be tested in CI.
+
+
+## v1.0.1: Native MT5 MCP vs optional Python gateway clarity
+
+A common diagnostic was `MT5: MetaTrader5 Python package missing` after clicking
+"Hubungkan Server Lokal" then "Uji Data Akun MCP". The local gateway is
+**not the built-in MetaTrader 5 MCP server**: it is a separate Python bridge.
+The recommended MT5 native MCP workflow instead connects to the real terminal
+URL (usually `http://127.0.0.1:22346/mcp`) using **the API key from MT5**.
+No Python package is required for native MCP reads.
+
+The "Gunakan Alamat MCP MT5" button now explicitly **disconnects** any
+existing local Python gateway session before updating the URL. A persistent
+mode hint distinguishes MT5_NATIVE from LUMAVUN_BRIDGE. Account and position
+errors raised by a missing Python module now state both remedies:
+select native URL/key, or install MetaTrader5 with the same Python launcher
+used by the optional bridge.
+
+Manual BUY/SELL via the existing separate local MT5 trading ticket still
+uses its own Python bridge; native MCP market-data access does not implicitly
+convert or unlock the order execution subsystem.
+
+Official native MT5 MCP configuration:
+https://www.metatrader5.com/en/terminal/help/mcp_and_ai/configuration

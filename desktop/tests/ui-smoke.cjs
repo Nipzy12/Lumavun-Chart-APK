@@ -139,6 +139,16 @@ async function main(){
   await page.locator('#mcpConnectLocal').click();
   await page.waitForFunction(()=>document.getElementById('mcpRemoteStatus')?.textContent?.includes('Aplikasi terhubung'),null,{timeout:10000});
   assert.equal(await page.locator('#mcpOpenChart').isEnabled(),true,'Connected MCP must enable remote market controls.');
+  assert.match(await page.locator('#mcpModeHint').textContent(),/GATEWAY LUMAVUN.*PYTHON/);
+  // Regression: selecting native MT5 endpoint must disconnect active Python gateway.
+  await page.locator('#mcpUseNativeAddress').click();
+  await page.waitForFunction(()=>document.getElementById('mcpTestMarket')?.disabled===true,null,{timeout:10000});
+  assert.equal(await page.locator('#mcpServerUrl').inputValue(),'http://127.0.0.1:22346/mcp');
+  assert.match(await page.locator('#mcpRemoteStatus').textContent(),/Belum terhubung/);
+  assert.match(await page.locator('#mcpModeHint').textContent(),/MCP bawaan MetaTrader 5/);
+  // Reconnect optional gateway to verify previous stop and key rotation controls.
+  await page.locator('#mcpConnectLocal').click();
+  await page.waitForFunction(()=>document.getElementById('mcpRemoteStatus')?.textContent?.includes('Aplikasi terhubung'),null,{timeout:10000});
   await page.locator('#mcpRevealKey').click();
   await page.waitForFunction(()=>document.getElementById('mcpServerKey')?.value?.length>=40);
   assert.equal(await page.locator('#mcpServerKey').getAttribute('type'),'text');
