@@ -2194,7 +2194,10 @@ class TerminalViewModel(
                             entryRange = "${formatCryptoPrice(pubResult.entryZone.low)}-${formatCryptoPrice(pubResult.entryZone.high)}",
                             stopLoss = formatCryptoPrice(pubResult.stopLoss),
                             tp1 = formatCryptoPrice(tp1),
-                            setupSignature = pubResult.setupSignature
+                            setupSignature = pubResult.setupSignature,
+                            pendingOrderLabel = pubResult.tradePlan
+                                ?.takeIf { it.isPending }?.orderActionLabel,
+                            isTechnicalFallback = pubResult.modelUsed == ConfirmedLimitRecommendationEngine.MODEL_ID
                         )
                     }
 
