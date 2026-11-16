@@ -223,7 +223,19 @@
   mcpMessage('mcpRemoteStatus',remote.connected?
    (remote.mode==='MT5_NATIVE'?'MCP MT5 BAWAAN · ':'MCP LUMAVUN · ')+
    'Aplikasi terhubung: '+remote.url+' · Tool baca-saja: '+remote.tools.join(', '):
-   'Belum terhubung ke endpoint MCP. Mulai server lokal atau masukkan URL dan API key.');
+   'Belum terhubung. Masukkan URL + API key MCP MT5, lalu Hubungkan URL + Key.');
+  const hint=el('mcpModeHint');
+  if(remote.connected&&remote.mode==='LUMAVUN_BRIDGE'){
+   hint.textContent='Mode aktif: GATEWAY LUMAVUN (PYTHON). Ini BUKAN MCP native MT5. '+
+    'Membaca data broker memerlukan Python 3 x64 + paket MetaTrader5. Untuk mode tanpa Python, klik Gunakan Alamat MCP MT5 lalu sambungkan URL + key bawaan MT5.';
+   hint.classList.add('mcpModeWarning');
+  }else if(remote.connected&&remote.mode==='MT5_NATIVE'){
+   hint.textContent='Mode aktif: MCP NATIVE MT5. Membaca data melalui server MT5 tanpa bridge Python. Trading AI tetap read-only.';
+   hint.classList.remove('mcpModeWarning');
+  }else{
+   hint.textContent='Rekomendasi: gunakan MCP bawaan MetaTrader 5 (Tools → Options → MCP). Tombol Gateway LUMAVUN hanya untuk integrasi Python opsional.';
+   hint.classList.remove('mcpModeWarning');
+  }
   el('mcpConnectLocal').disabled=!local.running||mcpBusy;
   el('mcpStop').disabled=!local.running||mcpBusy;
   el('mcpRevealKey').disabled=!local.running||mcpBusy;
@@ -244,12 +256,17 @@
   }catch(error){mcpMessage('mcpTestResult','MCP error: '+String(error.message||error));}
   finally{mcpBusy=false;await refreshMcp().catch(e=>mcpMessage('mcpTestResult',e.message));}
  }
- el('mcpUseNativeAddress').addEventListener('click',()=>{
+ el('mcpUseNativeAddress').addEventListener('click',()=>mcpAction(async()=>{
+  // Changing endpoint must invalidate a previous bridge session immediately.
+  // Merely replacing the URL field used to leave the Python bridge connected.
+  await window.lumavun.mcpDisconnect();
   el('mcpServerUrl').value='http://127.0.0.1:22346/mcp';
   el('mcpServerKey').value='';el('mcpServerKey').type='password';
-  mcpMessage('mcpTestResult','Salin API key BARU dari MT5 → Peralatan → Pilihan → MCP. Centang Aktifkan server internal dan klik OK, lalu Hubungkan URL + Key. Bila port berbeda, gunakan alamat persis dari MT5.');
- });
+  mcpMessage('mcpTestResult','Sesi MCP lama telah diputus. Salin API key BARU dari MT5 → Peralatan → Pilihan → MCP. Centang Aktifkan server internal dan klik OK, lalu klik Hubungkan URL + Key. Bila port berbeda, pakai alamat persis dari MT5.');
+ }));
  el('mcpStart').addEventListener('click',()=>mcpAction(async()=>{
+  // Explicit choice of the optional Python-backed server also clears any native session.
+  await window.lumavun.mcpDisconnect();
   const server=await window.lumavun.mcpStart(0);
   el('mcpServerUrl').value=server.url;el('mcpServerKey').value='';
   el('mcpServerKey').type='password';
@@ -258,17 +275,17 @@
  }));
  el('mcpConnectLocal').addEventListener('click',()=>mcpAction(async()=>{
   const result=await window.lumavun.mcpConnectLocal();
-  mcpMessage('mcpTestResult','MCP internal terhubung ke aplikasi. Server tool tersedia: '+result.tools.join(', ')+
-   '. Koneksi ini belum membuktikan MT5 broker sedang online.');
+  mcpMessage('mcpTestResult','GATEWAY LUMAVUN (PYTHON), bukan MCP native MT5. Tool tersedia: '+result.tools.join(', ')+
+   '. Untuk Uji Data Akun, gateway ini memerlukan Python dan paket MetaTrader5. Gunakan Alamat MCP MT5 bila ingin tanpa Python.');
  }));
  el('mcpConnect').addEventListener('click',()=>mcpAction(async()=>{
   const url=el('mcpServerUrl').value.trim();
   const key=el('mcpServerKey').value;
   const remote=await window.lumavun.mcpConnect(url,key);
   el('mcpServerKey').value='';el('mcpServerKey').type='password';
-  mcpMessage('mcpTestResult',(remote.mode==='MT5_NATIVE'?'MCP MT5 bawaan tersambung. ':'MCP gateway LUMAVUN tersambung. ')+
+  mcpMessage('mcpTestResult',(remote.mode==='MT5_NATIVE'?'MCP MT5 bawaan tersambung tanpa bridge Python. ':'MCP Gateway LUMAVUN tersambung; untuk data broker perlu Python + MetaTrader5. ')+
    'Alamat: '+remote.url+' · Tool baca-saja: '+remote.tools.join(', ')+
-   '. Koneksi MCP belum menjamin data broker tersedia. Periksa akun dan chart.');
+   '. Uji Data Akun untuk memverifikasi terminal.');
  }));
  el('mcpRevealKey').addEventListener('click',()=>mcpAction(async()=>{
   const key=await window.lumavun.mcpRevealKey();

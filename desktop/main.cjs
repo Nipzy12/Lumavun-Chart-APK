@@ -12,6 +12,7 @@ const {MT5Client}=require('./core/mt5-client.cjs');
 const {MT5TradeGate}=require('./core/mt5-trade-gate.cjs');
 const {MT5McpHttpServer}=require('./core/mt5-mcp-http.cjs');
 const {MT5McpRemote}=require('./core/mt5-mcp-client.cjs');
+const {explainMcpError}=require('./core/mt5-mcp-diagnostics.cjs');
 const hosts=['https://api.binance.com','https://api1.binance.com','https://data-api.binance.vision'];
 let gateway={url:'',token:'',symbols:[]};
 let aiConfig=null,aiBusy=false;
@@ -248,8 +249,14 @@ ipcMain.handle('lumavun:mcp:connect',async (_event,settings)=>{
  return mt5McpRemote.connect(settings?.url,settings?.apiKey);
 });
 ipcMain.handle('lumavun:mcp:disconnect',()=>mt5McpRemote.disconnect());
-ipcMain.handle('lumavun:mcp:account',()=>mt5McpRemote.call('account',{}));
-ipcMain.handle('lumavun:mcp:positions',()=>mt5McpRemote.call('positions',{}));
+ipcMain.handle('lumavun:mcp:account',async ()=>{
+ try{return await mt5McpRemote.call('account',{});}
+ catch(error){throw new Error(explainMcpError(mt5McpRemote.status().mode,error));}
+});
+ipcMain.handle('lumavun:mcp:positions',async ()=>{
+ try{return await mt5McpRemote.call('positions',{});}
+ catch(error){throw new Error(explainMcpError(mt5McpRemote.status().mode,error));}
+});
 
 ipcMain.handle('lumavun:mt5:account',async ()=>currentMt5Account());
 ipcMain.handle('lumavun:mt5:positions',async ()=>mt5.call('positions',{}));
