@@ -123,6 +123,9 @@ fun CompactAiAnalystCard(
     }
     val decisionStr = liveSetup?.direction ?: effectiveAiResult?.decision ?: fallbackDecision
     val (decisionBadge, decisionColor, _) = resolveDecisionVisuals(decisionStr)
+    val pendingLimitBadge = effectiveAiResult
+        ?.takeIf { it.isPendingOrderRecommendation }
+        ?.structuredOrderActionLabel
     val conciseStatus = resolveConciseSetupStatus(liveSetup, effectiveAiResult, marketAssessment)
     val gradeText = liveSetup?.setupGrade ?: effectiveAiResult?.setupQualityGrade?.takeIf { it != "WAIT" }
 
@@ -152,9 +155,9 @@ fun CompactAiAnalystCard(
                 ) {
                     Text(
                         text = if (gradeText != null && !decisionStr.equals("WAIT", ignoreCase = true)) {
-                            "$decisionBadge · $gradeText"
+                            "${pendingLimitBadge ?: decisionBadge} · $gradeText"
                         } else {
-                            decisionBadge
+                            pendingLimitBadge ?: decisionBadge
                         },
                         style = MaterialTheme.typography.titleSmall,
                         color = decisionColor,
@@ -761,6 +764,9 @@ fun FullAiAnalystScreen(
                 if (aiResult != null) {
                     val liveSetup = activeSetup?.takeIf { !it.lifecycleState.isTerminal }
                     val (decBadge, decColor, decBg) = resolveDecisionVisuals(liveSetup?.direction ?: aiResult.decision)
+                    val isConfirmedLimit = aiResult.modelUsed == com.example.analysis.signal.ConfirmedLimitRecommendationEngine.MODEL_ID
+                    val visibleOrderBadge = if (aiResult.isPendingOrderRecommendation)
+                        aiResult.structuredOrderActionLabel else decBadge
                     val htfLabel = snapshot?.higherContext?.timeframe?.label
                         ?: timeframe.higherTimeframe()?.label
                         ?: "HTF"
@@ -797,7 +803,7 @@ fun FullAiAnalystScreen(
                                             .padding(horizontal = 10.dp, vertical = 4.dp)
                                     ) {
                                         Text(
-                                            text = decBadge,
+                                            text = visibleOrderBadge,
                                             style = MaterialTheme.typography.titleMedium,
                                             color = decColor,
                                             fontWeight = FontWeight.Bold,
@@ -856,7 +862,7 @@ fun FullAiAnalystScreen(
 
                             Column(horizontalAlignment = Alignment.End) {
                                 Text(
-                                    text = "AI Confidence",
+                                    text = if (isConfirmedLimit) "Skor teknikal" else "AI Confidence",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
