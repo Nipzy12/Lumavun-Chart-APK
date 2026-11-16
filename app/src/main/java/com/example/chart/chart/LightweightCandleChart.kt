@@ -97,6 +97,11 @@ import com.example.chart.indicators.MacdPoint
 import com.example.market.candle.Candle
 import com.example.market.candle.formatCompactVolume
 import com.example.market.candle.formatCryptoPrice
+import com.example.market.candle.formatInstrumentPrice
+import com.example.market.candle.inferInstrumentCategory
+import com.example.market.clock.CandleCountdownState
+import kotlinx.coroutines.flow.StateFlow
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.theme.BearishRed
 import com.example.ui.theme.BullishGreen
 import com.example.ui.theme.CyanAccent
@@ -334,10 +339,17 @@ fun LightweightCandleChart(
     availableTrackedSetups: List<com.example.ai.tracker.TrackedPendingSetup> = emptyList(),
     onSelectTrackedSetup: (String) -> Unit = {},
     onOpenIndicatorsDialog: () -> Unit = {},
+    countdownFlow: StateFlow<CandleCountdownState>? = null,
     modifier: Modifier = Modifier
 ) {
     var engineMode by remember { mutableStateOf(ChartEngineMode.NATIVE_LIGHTWEIGHT) }
     var showIndicatorLegend by remember { mutableStateOf(false) }
+    // Only active pair/timeframe countdown is allowed on this chart.
+    val liveCountdown = countdownFlow?.collectAsStateWithLifecycle()?.value
+    val countdownLabel = liveCountdown?.takeIf {
+        it.symbol.equals(symbol, ignoreCase = true) &&
+            it.timeframe.binanceInterval.equals(timeframeKey, ignoreCase = true)
+    }?.formatted
 
     val marketStructure = remember(candles.size, candles.firstOrNull()?.openTime, candles.lastOrNull()?.openTime, snapshot) {
         snapshot?.marketStructure ?: if (candles.isNotEmpty()) MarketStructureEngine.analyze(candles) else null
@@ -370,7 +382,7 @@ fun LightweightCandleChart(
         if (!showAmd || candles.isEmpty()) emptyList() else computeAmdSessionZones(candles)
     }
 
-    var visibleBarsFloat by remember(symbol, timeframeKey) { mutableFloatStateOf(70f) }
+    var visibleBarsFloat by remember(symbol, timeframeKey) { mutableFloatStateOf(74f) }
     var priceScale by remember { mutableFloatStateOf(1f) }
     var priceOffset by remember { mutableStateOf(0.0) }
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
@@ -380,14 +392,15 @@ fun LightweightCandleChart(
     var crosshairOpenTime by remember(symbol, timeframeKey) { mutableStateOf<Long?>(null) }
 
     val totalCandles = candles.size
-    val visibleDataBars = visibleBarsFloat.roundToInt().coerceIn(20, 200)
+    val visibleDataBars = visibleBarsFloat.roundToInt().coerceIn(12, 260)
 
     val rightPaddingBars = if (isLiveMode) {
-        (visibleDataBars * 0.10f).roundToInt().coerceIn(5, 16)
+        // TradingView-like future whitespace: latest candle is not glued to the axis.
+        (visibleDataBars * 0.22f).roundToInt().coerceIn(8, 42)
     } else {
         0
     }
-    val totalSlotsInViewport = (visibleDataBars + rightPaddingBars).coerceAtLeast(24)
+    val totalSlotsInViewport = (visibleDataBars + rightPaddingBars).coerceAtLeast(18)
 
     val endIndexExclusive: Int = if (totalCandles == 0) {
         0
@@ -450,7 +463,7 @@ fun LightweightCandleChart(
     }
 
     fun resetChartZoomAndGoLive() {
-        visibleBarsFloat = 70f
+        visibleBarsFloat = 74f
         priceScale = 1f
         priceOffset = 0.0
         isLiveMode = true
@@ -460,7 +473,8 @@ fun LightweightCandleChart(
     }
 
     fun zoomByFactor(factor: Float) {
-        visibleBarsFloat = (visibleBarsFloat * factor).coerceIn(20f, 200f)
+        visibleBarsFloat = (visibleBarsFloat * factor).coerceIn(12f, 260f)
+        panPixelRemainder = 0f
     }
 
     Column(
@@ -536,7 +550,7 @@ fun LightweightCandleChart(
                                     resetChartZoomAndGoLive()
                                 },
                                 onLongPress = { offset ->
-                                    val rightAxisPx = 68.dp.toPx()
+                                    val rightAxisPx = 90.dp.toPx()
                                     val plotW = (size.width - rightAxisPx).coerceAtLeast(1f)
                                     if (offset.x <= plotW && candles.isNotEmpty()) {
                                         val slotIdx = ((offset.x / plotW) * totalSlotsInViewport).toInt()
@@ -548,7 +562,7 @@ fun LightweightCandleChart(
                                     if (crosshairOpenTime != null) {
                                         crosshairOpenTime = null
                                     } else {
-                                        val rightAxisPx = 68.dp.toPx()
+                                        val rightAxisPx = 90.dp.toPx()
                                         val plotW = (size.width - rightAxisPx).coerceAtLeast(1f)
                                         if (offset.x <= plotW && candles.isNotEmpty()) {
                                             val slotIdx = ((offset.x / plotW) * totalSlotsInViewport).toInt()
@@ -572,13 +586,13 @@ fun LightweightCandleChart(
                                         currentDragLock = DragLock.NONE
                                         val zoom = event.calculateZoom()
                                         if (abs(zoom - 1f) > 0.005f) {
-                                            visibleBarsFloat = (visibleBarsFloat / zoom).coerceIn(20f, 200f)
+                                            visibleBarsFloat = (visibleBarsFloat / zoom).coerceIn(12f, 260f)
                                             priceScale = (priceScale * zoom).coerceIn(0.2f, 10f)
                                         }
                                         event.changes.forEach { if (it.positionChanged()) it.consume() }
                                     } else if (pointerCount == 1) {
                                         val pan = event.calculatePan()
-                                        val rightAxisPx = 68.dp.toPx()
+                                        val rightAxisPx = 90.dp.toPx()
                                         val canvasW = canvasSize.width.toFloat().coerceAtLeast(1f)
                                         val plotW = (canvasW - rightAxisPx).coerceAtLeast(1f)
 
@@ -616,7 +630,7 @@ fun LightweightCandleChart(
                                                     } else {
                                                         openTimeToIndex[manualRightCandleOpenTime] ?: findCandleIndexByOpenTime(candles, manualRightCandleOpenTime)
                                                     }
-                                                    val minEndIdx = min(candles.lastIndex, 1)
+                                                    val minEndIdx = (visibleDataBars - 1).coerceAtMost(candles.lastIndex)
                                                     val newEndIdx = (currentEndIdx - deltaBars).coerceIn(minEndIdx, candles.lastIndex)
 
                                                     if (newEndIdx < candles.lastIndex) {
@@ -666,6 +680,8 @@ fun LightweightCandleChart(
                         gridColor = gridColor,
                         axisTextColor = axisTextColor,
                         timeAxisBgColor = if (darkMode) Color(0xF00B1426) else Color(0xF5F8FAFC),
+                        symbol = symbol,
+                        countdownLabel = countdownLabel,
                         textMeasurer = textMeasurer,
                         labelMeasurer = labelMeasurer,
                         priceScale = priceScale,
@@ -1020,13 +1036,13 @@ fun LightweightCandleChart(
                     icon = Icons.Default.ZoomIn,
                     label = "Zoom in",
                     tag = "chart_zoom_in_button",
-                    onClick = { zoomByFactor(0.8f) }
+                    onClick = { zoomByFactor(0.72f) }
                 )
                 DockedToolbarButton(
                     icon = Icons.Default.ZoomOut,
                     label = "Zoom out",
                     tag = "chart_zoom_out_button",
-                    onClick = { zoomByFactor(1.25f) }
+                    onClick = { zoomByFactor(1.38f) }
                 )
                 DockedToolbarButton(
                     icon = Icons.Default.Refresh,
@@ -1418,6 +1434,8 @@ private fun DrawScope.drawMainCandlestickChart(
     gridColor: Color,
     axisTextColor: Color,
     timeAxisBgColor: Color,
+    symbol: String,
+    countdownLabel: String?,
     textMeasurer: TextMeasurer,
     labelMeasurer: ChartLabelMeasurer,
     priceScale: Float = 1f,
@@ -1425,7 +1443,7 @@ private fun DrawScope.drawMainCandlestickChart(
 ) {
     if (startIndex >= endIndexExclusive || candles.isEmpty()) return
 
-    val rightAxisWidth = 68.dp.toPx()
+    val rightAxisWidth = 90.dp.toPx()
     val plotWidth = (size.width - rightAxisWidth).coerceAtLeast(10f)
     val totalHeight = size.height
 
@@ -1478,8 +1496,8 @@ private fun DrawScope.drawMainCandlestickChart(
     val centerPrice = (maxPrice + minPrice) / 2.0 + priceOffset
     val scaledSpan = (maxPrice - minPrice).coerceAtLeast(minPrice * 0.0005) / priceScale.coerceAtLeast(0.1f)
     val halfSpan = scaledSpan / 2.0
-    val scaledMax = (centerPrice + halfSpan) + (scaledSpan * 0.09)
-    val scaledMin = (centerPrice - halfSpan) - (scaledSpan * 0.16)
+    val scaledMax = (centerPrice + halfSpan) + (scaledSpan * 0.16)
+    val scaledMin = (centerPrice - halfSpan) - (scaledSpan * 0.22)
     val priceSpan = (scaledMax - scaledMin).coerceAtLeast(1e-8)
 
     val safePriceSpan = if (priceSpan > 0.0 && !priceSpan.isNaN() && !priceSpan.isInfinite()) priceSpan else 1.0
@@ -1497,7 +1515,8 @@ private fun DrawScope.drawMainCandlestickChart(
         fontFeatureSettings = "tnum"
     )
 
-    val gridSteps = 5
+    // 8 readable price levels, using instrument precision (forex vs crypto vs metals).
+    val gridSteps = 9
     for (g in 1 until gridSteps) {
         val frac = g.toFloat() / gridSteps
         val y = frac * totalHeight
@@ -1510,7 +1529,7 @@ private fun DrawScope.drawMainCandlestickChart(
         )
         drawText(
             textMeasurer = textMeasurer,
-            text = formatCryptoPrice(priceAtGrid),
+            text = formatInstrumentPrice(priceAtGrid, symbol, inferInstrumentCategory(symbol)),
             style = labelStyle,
             topLeft = Offset(plotWidth + 4.dp.toPx(), (y - 6.dp.toPx()).coerceIn(2f, (totalHeight - 14.dp.toPx()).coerceAtLeast(2f))),
             overflow = TextOverflow.Clip,
@@ -1956,13 +1975,14 @@ private fun DrawScope.drawMainCandlestickChart(
         }
     }
 
-    // Latest Price Axis Tag on Right Price Scale
+    // TradingView-style last-price marker: price and candle close countdown share one axis badge.
     val latestCandle = candles.last()
     if (latestCandle.close in scaledMin..scaledMax) {
         val latestY = priceToY(latestCandle.close)
         val latestColor = if (latestCandle.isBullish) BullishGreen else BearishRed
-        val badgeH = 16.dp.toPx()
-        val badgeTop = (latestY - badgeH / 2f).coerceIn(0f, (totalHeight - badgeH).coerceAtLeast(0f))
+        val badgeH = if (countdownLabel != null) 36.dp.toPx() else 21.dp.toPx()
+        val badgeTop = (latestY - badgeH / 2f)
+            .coerceIn(0f, (totalHeight - badgeH).coerceAtLeast(0f))
         drawRect(
             color = latestColor,
             topLeft = Offset(plotWidth, badgeTop),
@@ -1970,13 +1990,26 @@ private fun DrawScope.drawMainCandlestickChart(
         )
         drawText(
             textMeasurer = textMeasurer,
-            text = formatCryptoPrice(latestCandle.close),
-            style = ChartPivotLabelStyle.copy(color = Color.White),
-            topLeft = Offset(plotWidth + 3.dp.toPx(), badgeTop + 2.dp.toPx()),
-            overflow = TextOverflow.Clip,
-            softWrap = false,
-            maxLines = 1
+            text = formatInstrumentPrice(latestCandle.close, symbol, inferInstrumentCategory(symbol)),
+            style = ChartPivotLabelStyle.copy(
+                color = Color.White, fontSize = 11.sp,
+                fontFamily = JetBrainsMonoFontFamily
+            ),
+            topLeft = Offset(plotWidth + 5.dp.toPx(), badgeTop + 2.dp.toPx()),
+            maxLines = 1, softWrap = false, overflow = TextOverflow.Clip
         )
+        if (countdownLabel != null) {
+            drawText(
+                textMeasurer = textMeasurer,
+                text = countdownLabel,
+                style = ChartPivotLabelStyle.copy(
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontSize = 9.sp, fontFamily = JetBrainsMonoFontFamily
+                ),
+                topLeft = Offset(plotWidth + 5.dp.toPx(), badgeTop + 19.dp.toPx()),
+                maxLines = 1, softWrap = false, overflow = TextOverflow.Clip
+            )
+        }
     }
     // Visible candle timestamps in a subtle bottom rail, without requiring a WebView.
     val timeBandHeight = 19.dp.toPx()
@@ -2501,7 +2534,7 @@ private fun DrawScope.drawRsiPanel(
     axisTextColor: Color,
     textMeasurer: TextMeasurer
 ) {
-    val rightAxisWidth = 68.dp.toPx()
+    val rightAxisWidth = 90.dp.toPx()
     val plotWidth = (size.width - rightAxisWidth).coerceAtLeast(10f)
     val h = size.height
     val slotWidth = plotWidth / totalSlotsInViewport.toFloat()
@@ -2565,7 +2598,7 @@ private fun DrawScope.drawMacdPanel(
     crosshairIndex: Int?,
     gridColor: Color
 ) {
-    val rightAxisWidth = 68.dp.toPx()
+    val rightAxisWidth = 90.dp.toPx()
     val plotWidth = (size.width - rightAxisWidth).coerceAtLeast(10f)
     val h = size.height
     val slotWidth = plotWidth / totalSlotsInViewport.toFloat()
