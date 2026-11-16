@@ -175,7 +175,7 @@ class ConfirmedLimitRecommendationEngineTest {
             AiAnalysisRequestContext(), now
         ))
         assertNull(ConfirmedLimitRecommendationEngine.propose(
-            waitResult(), snapshot(resistances = listOf(102.4)),
+            waitResult(), snapshot(resistances = listOf(102.4)).copy(atr14 = 2.5),
             AiAnalysisRequestContext(), now
         ))
     }
