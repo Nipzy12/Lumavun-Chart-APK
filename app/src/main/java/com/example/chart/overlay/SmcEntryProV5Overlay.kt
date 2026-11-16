@@ -46,6 +46,7 @@ fun DrawScope.drawSmcEntryProV5Overlay(
         val y = priceToY(price)
         return y >= 0f && y <= size.height
     }
+    val occupiedLabels = ArrayList<Pair<Float, Float>>()
     fun label(price: Double, title: String, atX: Float, color: Color) {
         if (!inView(price) || atX < 0f || atX >= plotWidth) return
         val t = textMeasurer.measure(
@@ -58,6 +59,13 @@ fun DrawScope.drawSmcEntryProV5Overlay(
         val labelX = atX.coerceIn(2f, (plotWidth - t.size.width - 4f).coerceAtLeast(2f))
         val labelY = (priceToY(price) - t.size.height - 2.dp.toPx())
             .coerceIn(0f, (size.height - t.size.height).coerceAtLeast(0f))
+        // Avoid SMC/Sweep/BOS labels colliding on narrow mobile charts.
+        if (occupiedLabels.any { (x, y) ->
+                kotlin.math.abs(y - labelY) < 17.dp.toPx() &&
+                    kotlin.math.abs(x - labelX) < (t.size.width + 16.dp.toPx())
+            }
+        ) return
+        occupiedLabels.add(labelX to labelY)
         drawText(t, topLeft = Offset(labelX, labelY))
     }
     fun priceText(n: Double): String =
@@ -86,7 +94,7 @@ fun DrawScope.drawSmcEntryProV5Overlay(
     }
 
     if (showStructure) {
-        for (event in result.structures.takeLast(6)) {
+        for (event in result.structures.takeLast(3)) {
             if (event.index < startIndex || event.originIndex >= endIndexExclusive || !inView(event.price)) continue
             val start = max(0f, x(event.originIndex))
             val end = min(plotWidth, x(event.index))
@@ -94,12 +102,12 @@ fun DrawScope.drawSmcEntryProV5Overlay(
             val color = if (event.direction == SmcEntryProV5Engine.Direction.BUY) green else red
             val y = priceToY(event.price)
             drawLine(color.copy(alpha = 0.45f), Offset(start, y), Offset(end, y), strokeWidth = 1f, pathEffect = dash)
-            label(event.price, "PRO " + event.label, (start + end) / 2f, color)
+            label(event.price, event.label, (start + end) / 2f, color)
         }
     }
 
     // Pending orders are highlighted, but do not masquerade as executed orders.
-    for (pending in result.pending.takeLast(2)) {
+    for (pending in result.pending.takeLast(1)) {
         if (pending.bornIndex >= endIndexExclusive || !inView(pending.entry)) continue
         val left = max(0f, x(pending.bornIndex))
         val right = min(plotWidth, x(endIndexExclusive - 1))
@@ -112,7 +120,7 @@ fun DrawScope.drawSmcEntryProV5Overlay(
     }
 
     // Limit clutter to two most recent filled setups; freezing uses endIndex.
-    for (trade in result.trades.takeLast(2)) {
+    for (trade in result.trades.takeLast(1)) {
         if (trade.entryIndex >= endIndexExclusive || trade.endIndex < startIndex) continue
         val start = max(0f, x(trade.entryIndex - 6))
         val finalIndex = if (trade.outcome == SmcEntryProV5Engine.Outcome.LIVE) {
