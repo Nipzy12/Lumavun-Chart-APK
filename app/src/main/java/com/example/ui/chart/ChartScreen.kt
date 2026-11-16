@@ -316,6 +316,7 @@ fun ChartScreen(
         LightweightCandleChart(
             symbol = activeSymbol,
             timeframeKey = activeTimeframe.binanceInterval,
+            countdownFlow = countdownFlow,
             candles = candles,
             indicators = indicators,
             supportLevels = snapshot?.supportLevels.orEmpty(),
@@ -559,9 +560,7 @@ private fun CompactTerminalHeader(
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 5.dp)
                 )
             }
-            if (countdownFlow != null) {
-                IsolatedCandleCountdownBadge(countdownFlow = countdownFlow, fallbackTimeframe = timeframe)
-            }
+            // Countdown is rendered immediately below the live price label on the right price axis.
             if (isFullscreen) {
                 Surface(
                     color = CyanAccent.copy(alpha = 0.14f),
