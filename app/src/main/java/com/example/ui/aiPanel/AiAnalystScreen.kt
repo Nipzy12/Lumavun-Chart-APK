@@ -124,7 +124,7 @@ fun CompactAiAnalystCard(
     val decisionStr = liveSetup?.direction ?: effectiveAiResult?.decision ?: fallbackDecision
     val (decisionBadge, decisionColor, _) = resolveDecisionVisuals(decisionStr)
     val pendingLimitBadge = effectiveAiResult
-        ?.takeIf { it.isPendingOrderRecommendation }
+        ?.takeIf { it.tradePlan?.isPending == true }
         ?.structuredOrderActionLabel
     val conciseStatus = resolveConciseSetupStatus(liveSetup, effectiveAiResult, marketAssessment)
     val gradeText = liveSetup?.setupGrade ?: effectiveAiResult?.setupQualityGrade?.takeIf { it != "WAIT" }
@@ -765,7 +765,7 @@ fun FullAiAnalystScreen(
                     val liveSetup = activeSetup?.takeIf { !it.lifecycleState.isTerminal }
                     val (decBadge, decColor, decBg) = resolveDecisionVisuals(liveSetup?.direction ?: aiResult.decision)
                     val isConfirmedLimit = aiResult.modelUsed == com.example.analysis.signal.ConfirmedLimitRecommendationEngine.MODEL_ID
-                    val visibleOrderBadge = if (aiResult.isPendingOrderRecommendation)
+                    val visibleOrderBadge = if (aiResult.tradePlan?.isPending == true)
                         aiResult.structuredOrderActionLabel else decBadge
                     val htfLabel = snapshot?.higherContext?.timeframe?.label
                         ?: timeframe.higherTimeframe()?.label
