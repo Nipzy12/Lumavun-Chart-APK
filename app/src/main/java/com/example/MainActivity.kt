@@ -437,10 +437,9 @@ fun NexSyncTerminalApp(viewModel: TerminalViewModel) {
 
                     TerminalTab.CHART -> {
                         val activeTicker = uiState.liveTickers[uiState.activeSymbol]
-                        val activeProvider = activeTicker?.provider ?: inferMarketProvider(
-                            uiState.activeSymbol,
-                            activeTicker?.category ?: inferInstrumentCategory(uiState.activeSymbol)
-                        )
+                        // A Binance socket is intentionally stopped for BiQuote/Exness charts.
+                        // Provider selection is authoritative, not a stale ticker from another feed.
+                        val activeProvider = uiState.activeMarketProvider
                         val activeSymbolConnectionStatus = when (activeProvider) {
                             MarketProvider.BIQUOTE -> biQuoteConnectionStatus
                             MarketProvider.BINANCE -> connectionStatus
@@ -464,7 +463,17 @@ fun NexSyncTerminalApp(viewModel: TerminalViewModel) {
                             snapshot = uiState.snapshot,
                             settings = settings,
                             connectionStatus = activeSymbolConnectionStatus,
-                            reconnectingBannerMessage = reconnectingBanner,
+                            reconnectingBannerMessage = when (activeProvider) {
+                                MarketProvider.BINANCE -> if (activeSymbolConnectionStatus == WsConnectionStatus.RECONNECTING) {
+                                    reconnectingBanner ?: "Binance feed reconnecting..."
+                                } else null
+                                MarketProvider.BIQUOTE -> if (activeSymbolConnectionStatus == WsConnectionStatus.RECONNECTING) {
+                                    "BiQuote feed reconnecting..."
+                                } else null
+                                MarketProvider.EXNESS -> if (activeSymbolConnectionStatus == WsConnectionStatus.RECONNECTING) {
+                                    "Exness gateway reconnecting..."
+                                } else null
+                            },
                             restErrorMessage = uiState.restErrorMessage,
                             aiResult = uiState.aiResult,
                             isAiAnalyzing = uiState.isAiAnalyzing,
