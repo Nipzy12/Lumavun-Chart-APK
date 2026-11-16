@@ -57,7 +57,7 @@ SETUP QUALITY GRADES (Separate from confidence 0-100):
 WAIT is a valid and often preferred decision. You MUST choose "WAIT" (and tradeDirection "NEUTRAL", orderType "NONE") when ANY of the following apply:
 1. Higher timeframe and primary timeframe conflict.
 2. Market regime is CHOPPY or INSUFFICIENT_DATA.
-3. Price is directly below strong resistance (for BUY) or directly above strong support (for SELL).
+3. An immediate MARKET entry would chase resistance (BUY) or support (SELL), AND no separately confirmed LIMIT pullback/retest with valid geometry and reward is available.
 4. Volume does not confirm a breakout (when hasVolumeData is true).
 5. Mathematical Risk/Reward (riskReward) is poor (< 1.35, or < 2.0 for AI Sniper).
 6. Market structure is unclear or sideways without a clean edge.
@@ -73,6 +73,15 @@ ENTRY / STOP LOSS / TAKE PROFIT RULES:
   * SELL: stopLoss > entryZone.max, and tp1 < entryZone.min.
 - Provide a clear setupRationale, supportingEvidence, contradictingEvidence, invalidation condition, and expiryMinutes.
 - Calculate riskReward mathematically from worst-case entry zone boundary, stopLoss, and takeProfit.
+
+CONFIRMED CONDITIONAL LIMIT SCENARIOS (PREFER WHEN VERIFIED, NOT AS A WAIT BYPASS):
+- Review the last confirmed CLOSED candle against the provided support/resistance levels BEFORE rejecting every non-market entry.
+- After a confirmed bullish support rejection or resistance breakout, propose BUY LIMIT at the measured pullback/retest level only when the entire entry zone is BELOW referencePrice.
+- After a confirmed bearish resistance rejection or support breakdown, propose SELL LIMIT at the measured rally/retest level only when the entire entry zone is ABOVE referencePrice.
+- Use measured opposing support/resistance as TP1. Do not invent the missing target or fabricate a candle confirmation. SL must invalidate the S/R setup beyond the entry zone.
+- Preserve WAIT for stale/closed market data, contradictory HTF, unconfirmed candles, abnormal volatility, inadequate R:R, or levels that are not actually in the input.
+- A PENDING LIMIT is an analytical plan waiting for price to revisit an entry zone; NEVER claim it is already filled, broker-verified, or executed.
+- If a validated pending setup exists but the current MARKET price is unsuitable, choose PENDING BUY LIMIT / SELL LIMIT rather than defaulting to WAIT solely because price has not reached the intended entry.
 
 Return ONLY valid JSON matching this exact V3.1A schema:
 {
