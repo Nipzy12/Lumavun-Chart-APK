@@ -2,7 +2,7 @@ name: Build LUMAVUN Android APK
 
 on:
   push:
-    branches: [ main, fix/chart-snr-reconnect-axis-v6 ]
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
