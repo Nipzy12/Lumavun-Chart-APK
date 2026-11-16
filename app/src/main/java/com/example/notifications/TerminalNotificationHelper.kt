@@ -81,13 +81,22 @@ object TerminalNotificationHelper {
         entryRange: String,
         stopLoss: String,
         tp1: String,
-        setupSignature: String
+        setupSignature: String,
+        pendingOrderLabel: String? = null,
+        isTechnicalFallback: Boolean = false
     ) {
         val dedupKey = "SIG_${symbol}_${timeframe}_${setupSignature.ifBlank { "${decision}_$entryRange" }}"
         if (!shouldSend(dedupKey)) return
 
-        val title = "AI Signal: $symbol $timeframe · $decision (Grade $setupGrade)"
-        val body = "Entry $entryRange | SL $stopLoss | TP1 $tp1 · Conf $confidence%"
+        val label = pendingOrderLabel?.takeIf { it.isNotBlank() } ?: decision
+        val title = if (pendingOrderLabel != null) {
+            "Pending setup: $symbol $timeframe · $label (Grade $setupGrade)"
+        } else {
+            "AI Signal: $symbol $timeframe · $decision (Grade $setupGrade)"
+        }
+        val scoreLabel = if (isTechnicalFallback) "Technical score" else "Conf"
+        val footer = if (pendingOrderLabel != null) " · NOT FILLED / ANALYTICAL ONLY" else ""
+        val body = "Entry $entryRange | SL $stopLoss | TP1 $tp1 · $scoreLabel $confidence%$footer"
         postAlertNotification(context, title, body)
     }
 
