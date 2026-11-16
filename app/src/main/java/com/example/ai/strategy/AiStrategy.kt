@@ -37,6 +37,21 @@ enum class AiStrategy(
             - In CHOPPY regimes, enforce WAIT for capital preservation.
         """.trimIndent()
     ),
+    AI_SNR(
+        id = "AI_SNR",
+        displayName = "AI SNR",
+        shortBadge = "SNR",
+        shortDescription = "Automatic support/resistance rejection and breakout-retest analysis using the same levels as the chart indicator.",
+        analysisInstructions = """
+            - Use the actual supportLevels and resistanceLevels from the active LUMAVUN S/R indicator; do not invent lines, touches, or price history.
+            - Identify the nearest confirmed support and resistance and distinguish rejection, breakout, retest, and neutral/range conditions.
+            - Require confirmation from a CLOSED candle (body/wick relative to the selected level), plus ATR-based tolerance and market-data freshness.
+            - For LONG, verify support rejection or resistance breakout/retest; for SHORT, verify resistance rejection or support breakdown/retest.
+            - Place invalidation (SL) outside the relevant S/R level and ensure TP does not exceed the next measured opposing level without evidence.
+            - If levels are missing, the price is far from a level, the market feed is stale, or risk/reward is poor, output WAIT and explain why.
+            - Use AI conclusions as analysis only; never claim automatic real-order execution or guaranteed trade outcomes.
+        """.trimIndent()
+    ),
     AI_SMC(
         id = "AI_SMC",
         displayName = "AI SMC",
