@@ -32,6 +32,8 @@ import com.example.analysis.signal.SetupLifecycleState
 import com.example.analysis.signal.SignalEngine
 import com.example.analysis.signal.SignalLifecycleStatus
 import com.example.analysis.signal.SignalValidationEngine
+import com.example.analysis.supportResistance.SnrAutoAnalysisEngine
+import com.example.ai.strategy.AiStrategy
 import com.example.analysis.technical.MarketTechnicalSnapshot
 import com.example.analysis.technical.TechnicalSnapshotBuilder
 import com.example.chart.indicators.ChartIndicatorParams
@@ -419,6 +421,7 @@ class TerminalViewModel(
     private var lastIndicatorCandleOpenTime: Long = -1L
     private var lastContinuousSetupCheckMs: Long = 0L
     private var lastAutoDetectedSetupSignature: String = ""
+    private var lastSnrAutoAnalysisSignature: String = ""
     private var monitorCheckpoint = MonitorEvaluationCheckpoint()
 
     fun isAutoAiMonitoringActive(cfg: TerminalSettings = preferences.settings.value): Boolean {
@@ -1098,13 +1101,42 @@ class TerminalViewModel(
                         }
                     }
 
-                    if (isAutoAiMonitoringActive(currentSettings) &&
+                    // The SNR strategy has its own confirmed-candle S/R proximity gate.
+                    // Do not run the generic monitor trigger for SNR or it would duplicate calls.
+                    if (currentSettings.selectedAiStrategy != AiStrategy.AI_SNR &&
+                        isAutoAiMonitoringActive(currentSettings) &&
                         !_uiState.value.isAiAnalyzing &&
                         monitorDecision.shouldTriggerFullAiAnalysis
                     ) {
                         lastContinuousSetupCheckMs = now
                         lastAutoDetectedSetupSignature = liveCandidate?.setupSignature.orEmpty()
                         runAiAnalysis(isAutomaticTrigger = true)
+                    }
+                    if (currentSettings.selectedAiStrategy == AiStrategy.AI_SNR &&
+                        currentSettings.autoAiAnalysis &&
+                        currentSettings.showSupportResistance &&
+                        (confirmedCloseEvent != null || event.candle.isClosed) &&
+                        !_uiState.value.isAiAnalyzing
+                    ) {
+                        val snrEvent = SnrAutoAnalysisEngine.evaluate(
+                            candles = mergedCandles,
+                            supports = recomputedSnapshot.supportLevels,
+                            resistances = recomputedSnapshot.resistanceLevels,
+                            atr14 = recomputedSnapshot.atr14
+                        )
+                        val signature = listOf(
+                            state.activeSymbol, state.activeTimeframe.label,
+                            event.candle.openTime.toString(), snrEvent.type
+                        ).joinToString(":")
+                        if (snrEvent.shouldAnalyze &&
+                            signature != lastSnrAutoAnalysisSignature &&
+                            AutoSetupEngineV2.isMarketAndDataValidForNewEntry(
+                                evaluateActiveMarketStatus(_uiState.value, now)
+                            )
+                        ) {
+                            lastSnrAutoAnalysisSignature = signature
+                            runAiAnalysis(isAutomaticTrigger = true)
+                        }
                     }
                 }
             }
@@ -1843,9 +1875,10 @@ class TerminalViewModel(
      */
     fun runAiAnalysis(isAutomaticTrigger: Boolean = false) {
         val cfg = preferences.settings.value
-        if (isAutomaticTrigger && !isAutoAiMonitoringActive(cfg)) {
-            return
-        }
+        // SNR auto-analysis is event-driven, independent of the generic Continuous AUTO mode.
+        if (isAutomaticTrigger && !isAutoAiMonitoringActive(cfg) &&
+            !(cfg.selectedAiStrategy == AiStrategy.AI_SNR && cfg.autoAiAnalysis)
+        ) return
         val state = _uiState.value
         if (state.isAiAnalyzing && isAutomaticTrigger) return
 
@@ -2877,8 +2910,12 @@ class TerminalViewModel(
         syncForegroundMonitoringService()
     }
 
-    fun selectAiStrategy(strategy: com.example.ai.strategy.AiStrategy) {
+    fun selectAiStrategy(strategy: AiStrategy) {
         preferences.setSelectedAiStrategy(strategy)
+        // SNR strategy and the on-chart S/R overlay must reference the same detected levels.
+        if (strategy == AiStrategy.AI_SNR && !preferences.settings.value.showSupportResistance) {
+            preferences.setShowSupportResistance(true, _uiState.value.activeTimeframe)
+        }
         _uiState.update { it.copy(selectedAiStrategy = strategy) }
     }
 
