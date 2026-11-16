@@ -25,6 +25,7 @@ import com.example.analysis.events.UnavailableEventPolicy
 import com.example.analysis.signal.ActiveTradeSetup
 import com.example.analysis.signal.AutoSetupEngineV2
 import com.example.analysis.signal.BaselineSignalGenerator
+import com.example.analysis.signal.ConfirmedLimitRecommendationEngine
 import com.example.analysis.signal.ChartSignalOverlay
 import com.example.analysis.signal.MarketAssessmentState
 import com.example.analysis.signal.MonitorEvaluationCheckpoint
@@ -2068,6 +2069,18 @@ class TerminalViewModel(
                         context = requestContext,
                         currentTimeMs = nowMs
                     )
+                    // Separate confirmed pending LIMIT analysis from AI's WAIT result.
+                    // This NEVER turns a data-blocked / unconfirmed setup into a trade:
+                    // the S/R reaction, candle closure, MTF bias, geometry and R:R
+                    // must independently pass deterministic safety validation.
+                    val reviewed = if (rawValidated.isWait) {
+                        ConfirmedLimitRecommendationEngine.propose(
+                            originalWait = rawValidated,
+                            snapshot = mtfSnapshot,
+                            context = requestContext,
+                            nowMs = nowMs
+                        ) ?: rawValidated
+                    } else rawValidated
 
                     val currentSettings = preferences.settings.value
                     val marketStatus = evaluateActiveMarketStatus(_uiState.value, nowMs)
@@ -2075,7 +2088,7 @@ class TerminalViewModel(
                     // Reconcile Market Assessment vs Active Setup (WAIT never overwrites a valid ActiveSetup)
                     val reconciliation = AutoSetupEngineV2.reconcileNewAnalysis(
                         currentActive = _uiState.value.activeSetup,
-                        newResult = rawValidated,
+                        newResult = reviewed,
                         snapshot = mtfSnapshot,
                         marketStatus = marketStatus,
                         minAutoGrade = currentSettings.autoSignalMinGrade,
@@ -2110,7 +2123,7 @@ class TerminalViewModel(
                         }
 
                         // Cache raw JSON only if we don't overwrite an active setup with WAIT
-                        val resultToCache = finalActiveSetup?.sourceAiResult ?: rawValidated
+                        val resultToCache = finalActiveSetup?.sourceAiResult ?: reviewed
                         watchlistRepo.saveAiAnalysisCache(
                             symbol = mtfSnapshot.symbol,
                             timeframe = mtfSnapshot.timeframe,
