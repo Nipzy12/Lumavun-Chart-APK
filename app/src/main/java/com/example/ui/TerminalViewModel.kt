@@ -3238,14 +3238,24 @@ class TerminalViewModel(
     }
 
     fun forceReconnectWebSocket() {
-        wsManager.forceReconnect()
         val state = _uiState.value
-        if (inferMarketProvider(state.activeSymbol) == MarketProvider.BIQUOTE) {
-            val biQuoteWatchlist = watchlist.value
-                .filter { inferMarketProvider(it.symbol) == MarketProvider.BIQUOTE }
-                .map { it.symbol }
-            biQuoteRealtime.subscribe(state.activeSymbol, state.activeTimeframe, biQuoteWatchlist)
+        when (state.activeMarketProvider) {
+            MarketProvider.BINANCE -> wsManager.forceReconnect()
+            MarketProvider.BIQUOTE -> {
+                val symbols = watchlist.value.filter {
+                    val provider = if (it.provider.isNotBlank()) MarketProvider.fromCode(it.provider)
+                        else inferMarketProvider(it.symbol)
+                    provider == MarketProvider.BIQUOTE
+                }.map { it.symbol }
+                biQuoteRealtime.subscribe(state.activeSymbol, state.activeTimeframe, symbols)
+            }
+            MarketProvider.EXNESS -> {
+                exnessProvider.subscribe(
+                    state.activeSymbol, state.activeTimeframe, watchlist.value.map { it.symbol }
+                )
+            }
         }
+        // Refresh the active chart only when its price history is unavailable/stale.
         if (state.candles.isEmpty() || state.restErrorMessage != null) {
             loadMarketPairAndTimeframe(state.activeSymbol, state.activeTimeframe)
         }
@@ -3253,8 +3263,13 @@ class TerminalViewModel(
 
     // --- Lifecycle Hooks ---
     fun onAppForeground() {
-        wsManager.onAppForeground()
         val state = _uiState.value
+        if (state.activeMarketProvider == MarketProvider.BINANCE) {
+            wsManager.onAppForeground()
+        } else {
+            // A background Binance socket must not reconnect under a BiQuote/Exness chart.
+            wsManager.shutdown()
+        }
         candleClock.sync(state.activeSymbol, state.activeTimeframe, state.candles.lastOrNull())
         candleClock.start(viewModelScope)
     }
