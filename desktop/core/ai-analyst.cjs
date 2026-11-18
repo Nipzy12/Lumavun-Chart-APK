@@ -1,5 +1,6 @@
 'use strict';
 const vision=require('./vision.cjs');
+const v9=require('./v9-engine.js');
 const LOOP='http://127.0.0.1:11434',NAME=/^[A-Za-z0-9][A-Za-z0-9._:/+-]{0,100}$/;
 function validateConfig(raw){
  const provider=String(raw?.provider||'').toUpperCase(),model=String(raw?.model||'').trim();
@@ -76,15 +77,18 @@ function parseReply(response,config,marketPrice){
  const bias=['BULLISH','BEARISH','NEUTRAL'].includes(String(x.bias||'').toUpperCase())?String(x.bias).toUpperCase():'NEUTRAL';
  const conf=Number(x.confidence),confidence=Number.isFinite(conf)?Math.max(0,Math.min(100,Math.round(conf))):0;
  const entry=x.entry===null?null:Number(x.entry),stop=x.stopLoss===null?null:Number(x.stopLoss),price=Number(marketPrice);
- const tps=(Array.isArray(x.takeProfit)?x.takeProfit:[]).slice(0,3).map(Number).filter(n=>Number.isFinite(n)&&n>0);
- const good=[entry,stop,price].every(n=>Number.isFinite(n)&&n>0)&&tps.length>0&&Math.abs(entry-price)/price<.25;
- const valid=(decision==='LONG'||decision==='SHORT')&&good&&(decision==='LONG'?stop<entry&&tps.every(v=>v>entry):stop>entry&&tps.every(v=>v<entry));
- return {provider:config.provider,model:config.model,decision:valid?decision:'WAIT',bias,confidence,
+ const rawTps=Array.isArray(x.takeProfit)?x.takeProfit:[];
+ const tps=rawTps.slice(0,3).map(Number);
+ const good=[entry,stop,price].every(n=>Number.isFinite(n)&&n>0)&&tps.length>0&&rawTps.length<=3&&tps.every(n=>Number.isFinite(n)&&n>0)&&Math.abs(entry-price)/price<=.05;
+ const rr=good&&entry!==stop?Math.abs(tps[0]-entry)/Math.abs(entry-stop):0;
+ const ordered=decision==='LONG'?tps.every((v,i)=>v>(i?tps[i-1]:entry)):tps.every((v,i)=>v<(i?tps[i-1]:entry));
+ const valid=(decision==='LONG'||decision==='SHORT')&&good&&confidence>=60&&Number.isFinite(rr)&&rr>=1.35&&ordered&&(decision==='LONG'?stop<entry&&price>stop&&price<tps[0]:stop>entry&&price<stop&&price>tps[0]);
+ return {provider:config.provider,model:config.model,decision:valid?decision:'WAIT',bias:valid?bias:'NEUTRAL',confidence,
   summary:String(x.summary||'Analisis belum memadai.').slice(0,700),
   reasoning:(Array.isArray(x.reasoning)?x.reasoning:[]).filter(v=>typeof v==='string').slice(0,5).map(v=>v.slice(0,250)),
   invalidation:String(x.invalidation||'').slice(0,250),entry:valid?entry:null,stopLoss:valid?stop:null,
-  takeProfit:valid?tps:[],riskReward:valid?Number((Math.abs(tps[0]-entry)/Math.abs(entry-stop)).toFixed(2)):null,
-  warning:decision!=='WAIT'&&!valid?'Level entry/SL/TP tidak valid; hasil WAIT.':'',generatedAt:new Date().toISOString()};
+  takeProfit:valid?tps:[],riskReward:valid?Number(rr.toFixed(2)):null,rawRiskReward:valid?rr:null,
+  warning:decision!=='WAIT'&&!valid?'Risk Guardian: level, R:R 1.35, confidence 60, atau urutan TP tidak memenuhi syarat; hasil WAIT.':'',generatedAt:new Date().toISOString()};
 }
 async function getJson(url,opts,fetcher,timeout=120000){
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
@@ -114,6 +118,7 @@ async function analyze(config,snapshot,fetcher=globalThis.fetch,imageDataUrl=nul
  }
  let answer=safe.provider==='OLLAMA'?body?.message?.content:body?.choices?.[0]?.message?.content;
  if(Array.isArray(answer))answer=answer.filter(v=>typeof v?.text==='string').map(v=>v.text).join('\n');
- return {...parseReply(answer,safe,snapshot.lastPrice),visionAssisted:imageDataUrl!==null};
+ const parsed=parseReply(answer,safe,snapshot.lastPrice);
+ return {...parsed,technicalEvidence:v9.score(snapshot.indicators,parsed.decision,parsed.rawRiskReward),visionAssisted:imageDataUrl!==null};
 }
 module.exports={OLLAMA_URL:LOOP,validateConfig,createSnapshot,buildMessages,parseReply,listOllamaModels,analyze};
