@@ -14,16 +14,18 @@ object SmcHistoricalReplay {
         val winRate: Double? get() = if (resolved == 0) null else wins * 100.0 / resolved
     }
 
-    fun run(input: List<Candle>, timeframe: Timeframe, costBpsPerSide: Double): Report? {
+    fun run(input: List<Candle>, timeframe: Timeframe, costBpsPerSide: Double,
+        quality: SmcEntryProV5Engine.QualityMode = SmcEntryProV5Engine.QualityMode.STRICT,
+        targetRr: Double = 2.0): Report? {
         val htf = timeframe.higherTimeframe() ?: return null
-        if (!costBpsPerSide.isFinite() || costBpsPerSide !in 0.0..100.0) return null
+        if (!costBpsPerSide.isFinite() || costBpsPerSide !in 0.0..100.0 || !targetRr.isFinite() || targetRr !in 1.35..4.0) return null
         val candles = input.filter { it.isClosed }.takeLast(1000)
         if (candles.size < 60 || candles.zipWithNext().any { (a,b) -> b.openTime <= a.openTime } ||
             candles.any { !it.isValid() || !listOf(it.open,it.high,it.low,it.close,it.volume).all { n -> n.isFinite() } ||
                 it.high < maxOf(it.open,it.close) || it.low > minOf(it.open,it.close) || it.closeTime <= it.openTime }) return null
         // Price-relative numerical assumption; true instrument tick size is not available here.
         val tick = (candles.first().close * 1e-7).coerceAtLeast(1e-10)
-        val cfg = SmcEntryProV5Engine.Config(htfTimeframe = htf, setupHistory = candles.size)
+        val cfg = SmcEntryProV5Engine.Config(htfTimeframe = htf, setupHistory = candles.size, qualityMode = quality, rrTarget = targetRr)
         val result = SmcEntryProV5Engine.calculate(candles, timeframe, cfg, tick)
         if (result.htfUnavailable || result.processedClosedBars != candles.size) return null
         var gross = 0.0

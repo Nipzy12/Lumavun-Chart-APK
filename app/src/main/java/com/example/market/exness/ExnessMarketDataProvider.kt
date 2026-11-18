@@ -53,7 +53,7 @@ import kotlin.math.max
  * - Unconfigured guard: Never silently substitutes Binance data as Exness
  */
 class ExnessMarketDataProvider(
-    private var config: ExnessConfig = ExnessConfig(),
+    @Volatile private var config: ExnessConfig = ExnessConfig(),
     private val httpClient: OkHttpClient = defaultHttpClient()
 ) : MarketDataProvider {
 
@@ -87,9 +87,10 @@ class ExnessMarketDataProvider(
     override val tickerEvents: SharedFlow<Ticker24h> = _tickerEvents.asSharedFlow()
 
     private val lastQuoteTimestamp = AtomicLong(0L)
+    private val lastSocketQuoteTimestamp = AtomicLong(0L)
     private var heartbeatJob: Job? = null
     private var pollingJob: Job? = null
-    private var activeWebSocket: WebSocket? = null
+    @Volatile private var activeWebSocket: WebSocket? = null
 
     @Volatile
     private var currentSubscribedSymbol: String = "EURUSD"
@@ -173,20 +174,11 @@ class ExnessMarketDataProvider(
         }
 
         try {
-            val response = httpClient.newCall(reqBuilder.build()).execute()
-            if (!response.isSuccessful) {
-                return@withContext MarketApiResult.Error(
-                    "Gateway Exness HTTP ${response.code}: ${response.message}"
-                )
-            }
-            val body = response.body?.string() ?: ""
-            val candles = parseCandlesJson(body)
-            if (candles.isEmpty()) {
-                MarketApiResult.Error("Tidak ada data candle dari gateway Exness untuk $cleanSymbol")
-            } else {
-                lastQuoteTimestamp.set(System.currentTimeMillis())
-                _connectionStatus.value = ProviderConnectionStatus.Connected
-                MarketApiResult.Success(candles)
+            httpClient.newCall(reqBuilder.build()).execute().use { response ->
+                if (!response.isSuccessful) return@withContext MarketApiResult.Error("Gateway Exness HTTP ${response.code}")
+                val candles = parseCandlesJson(response.body?.string().orEmpty())
+                if (candles.isEmpty()) MarketApiResult.Error("Tidak ada data candle dari gateway Exness untuk $cleanSymbol")
+                else MarketApiResult.Success(candles)
             }
         } catch (e: UnknownHostException) {
             _connectionStatus.value = ProviderConnectionStatus.Disconnected("Host gateway tidak ditemukan")
@@ -218,19 +210,17 @@ class ExnessMarketDataProvider(
         }
 
         try {
-            val response = httpClient.newCall(reqBuilder.build()).execute()
-            if (!response.isSuccessful) {
-                return@withContext MarketApiResult.Error("Gateway quote HTTP ${response.code}")
-            }
-            val body = response.body?.string() ?: ""
-            val ticker = parseQuoteJson(body, cleanSymbol)
-            if (ticker != null) {
-                lastQuoteTimestamp.set(System.currentTimeMillis())
-                _connectionStatus.value = ProviderConnectionStatus.Connected
-                _tickerEvents.tryEmit(ticker)
-                MarketApiResult.Success(ticker)
-            } else {
-                MarketApiResult.Error("Format quote Exness tidak valid")
+            httpClient.newCall(reqBuilder.build()).execute().use { response ->
+                if (!response.isSuccessful) return@withContext MarketApiResult.Error("Gateway quote HTTP ${response.code}")
+                val ticker = parseQuoteJson(response.body?.string().orEmpty(), cleanSymbol)
+                if (ticker != null) {
+                    if (cleanSymbol == currentSubscribedSymbol) {
+                        lastQuoteTimestamp.set(System.currentTimeMillis())
+                        _connectionStatus.value = ProviderConnectionStatus.Connected
+                        _tickerEvents.tryEmit(ticker)
+                    }
+                    MarketApiResult.Success(ticker)
+                } else MarketApiResult.Error("Format quote Exness tidak valid")
             }
         } catch (e: Exception) {
             MarketApiResult.Error("Gagal mengambil quote Exness: ${e.message}")
@@ -311,8 +301,8 @@ class ExnessMarketDataProvider(
 
         activeWebSocket = httpClient.newWebSocket(reqBuilder.build(), object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
-                lastQuoteTimestamp.set(System.currentTimeMillis())
-                _connectionStatus.value = ProviderConnectionStatus.Connected
+                if (activeWebSocket !== webSocket) return
+                // A socket handshake is not a fresh quote.
                 // Send subscription payload
                 val subMsg = JSONObject().apply {
                     put("action", "subscribe")
@@ -324,10 +314,12 @@ class ExnessMarketDataProvider(
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
-                handleWebSocketMessage(text)
+                if (activeWebSocket === webSocket) handleWebSocketMessage(text)
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                if (activeWebSocket !== webSocket) return
+                lastSocketQuoteTimestamp.set(0L)
                 // Connection failed - fallback polling handles continuity
                 if (_connectionStatus.value is ProviderConnectionStatus.Connected) {
                     _connectionStatus.value = ProviderConnectionStatus.Disconnected(t.message ?: "WS Failure")
@@ -335,6 +327,8 @@ class ExnessMarketDataProvider(
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                if (activeWebSocket !== webSocket) return
+                lastSocketQuoteTimestamp.set(0L)
                 if (_connectionStatus.value is ProviderConnectionStatus.Connected) {
                     _connectionStatus.value = ProviderConnectionStatus.Disconnected(reason)
                 }
@@ -348,35 +342,10 @@ class ExnessMarketDataProvider(
             val type = json.optString("type", "")
             when (type) {
                 "quote", "tick" -> {
-                    val symbol = json.optString("symbol", currentSubscribedSymbol)
-                    val bid = json.optDouble("bid", 0.0)
-                    val ask = json.optDouble("ask", 0.0)
-                    val last = json.optDouble("last", (bid + ask) / 2.0)
-                    val high = json.optDouble("high", last)
-                    val low = json.optDouble("low", last)
-                    val change = json.optDouble("priceChangePercent", 0.0)
-                    val volume = json.optDouble("volume", 0.0)
-                    val spread = max(0.0, ask - bid)
-                    val instrument = ExnessCatalog.findInstrument(symbol)
-
-                    val ticker = Ticker24h(
-                        symbol = symbol,
-                        lastPrice = last,
-                        priceChangePercent = change,
-                        highPrice = high,
-                        lowPrice = low,
-                        volume = volume,
-                        quoteVolume = volume * last,
-                        updatedAt = System.currentTimeMillis(),
-                        bid = bid,
-                        ask = ask,
-                        spread = spread,
-                        hasVerifiedBidAsk = (bid > 0.0 && ask >= bid),
-                        provider = MarketProvider.EXNESS,
-                        category = instrument?.category ?: com.example.market.candle.inferInstrumentCategory(symbol),
-                        displayName = instrument?.displayName ?: symbol
-                    )
-                    lastQuoteTimestamp.set(System.currentTimeMillis())
+                    val ticker = parseQuoteJson(text, currentSubscribedSymbol) ?: return
+                    val now = System.currentTimeMillis()
+                    lastSocketQuoteTimestamp.set(now)
+                    lastQuoteTimestamp.set(now)
                     _connectionStatus.value = ProviderConnectionStatus.Connected
                     _tickerEvents.tryEmit(ticker)
                 }
@@ -401,8 +370,9 @@ class ExnessMarketDataProvider(
                         closeTime = closeTime,
                         isClosed = isClosed
                     )
-                    lastQuoteTimestamp.set(System.currentTimeMillis())
-                    _connectionStatus.value = ProviderConnectionStatus.Connected
+                    if (!candle.isValid() || !listOf(open, high, low, close, volume).all { it.isFinite() } ||
+                        high < maxOf(open, close) || low > minOf(open, close) ||
+                        !json.optString("symbol", currentSubscribedSymbol).equals(currentSubscribedSymbol, ignoreCase = true)) return
                     _klineEvents.tryEmit(
                         KlineStreamEvent(
                             symbol = json.optString("symbol", currentSubscribedSymbol),
@@ -423,6 +393,7 @@ class ExnessMarketDataProvider(
             while (isActive) {
                 delay(backoffMs)
                 if (!config.isConfigured) break
+                if (ExnessQuoteGuard.socketFresh(lastSocketQuoteTimestamp.get(), System.currentTimeMillis())) continue
 
                 val quoteRes = getLatestQuote(symbol)
                 if (quoteRes is MarketApiResult.Success) {
@@ -439,6 +410,8 @@ class ExnessMarketDataProvider(
             activeWebSocket?.close(1000, reason.ifBlank { "Normal closure" })
         } catch (_: Exception) {}
         activeWebSocket = null
+        lastSocketQuoteTimestamp.set(0L)
+        lastQuoteTimestamp.set(0L)
         pollingJob?.cancel()
         pollingJob = null
     }
@@ -490,12 +463,14 @@ class ExnessMarketDataProvider(
             val bid = json.optDouble("bid", 0.0)
             val ask = json.optDouble("ask", 0.0)
             val last = json.optDouble("last", (bid + ask) / 2.0)
-            if (last <= 0.0 && bid <= 0.0) return null
+            if (!json.optString("symbol", symbol).equals(symbol, ignoreCase = true)) return null
+            if (!ExnessQuoteGuard.valid(last, bid, ask)) return null
 
             val high = json.optDouble("high", last)
             val low = json.optDouble("low", last)
             val change = json.optDouble("priceChangePercent", 0.0)
             val volume = json.optDouble("volume", 0.0)
+            if (!listOf(high, low, change, volume).all { it.isFinite() } || volume < 0.0 || high < low) return null
             val spread = max(0.0, ask - bid)
             val instrument = ExnessCatalog.findInstrument(symbol)
 

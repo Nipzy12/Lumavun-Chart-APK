@@ -1259,10 +1259,21 @@ fun SettingsScreen(
                     icon = Icons.Default.Info,
                     iconTint = Color(0xFF9CA3AF),
                     title = "Tentang",
-                    valueText = "v3.4.0",
+                    valueText = com.example.BuildConfig.VERSION_NAME,
                     testTag = "menu_about",
                     onClick = { showAboutDialog = true }
                 )
+
+                AndroidMaintenancePanel(settings) { profile ->
+                    onSetThemeMode(profile.theme)
+                    onSetLanguage(profile.language)
+                    onSetDefaultTimeframe(profile.timeframe)
+                    onSetShowEma(profile.ema)
+                    onSetShowRsi(profile.rsi)
+                    onSetShowMacd(profile.macd)
+                    onSetShowVolume(profile.volume)
+                    onSetShowSupportResistance(profile.sr)
+                }
 
                 // 🗑️ Hapus Akun -> teks merah, klik buka konfirmasi
                 TradingViewMenuItem(
@@ -1474,7 +1485,7 @@ fun SettingsScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "LUMAVUN Chart · v3.4.0 (TradingView Edition)",
+                        text = "LUMAVUN Chart · ${com.example.BuildConfig.VERSION_NAME} (V10 Android)",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold,
                         color = CyanAccent
