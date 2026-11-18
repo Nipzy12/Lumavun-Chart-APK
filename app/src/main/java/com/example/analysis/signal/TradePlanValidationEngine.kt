@@ -8,8 +8,6 @@ import com.example.ai.plan.TradeSetupStatus
 import com.example.ai.strategy.AiStrategy
 import com.example.storage.preferences.TradingStyleProfile
 import java.util.Locale
-import kotlin.math.abs
-import kotlin.math.max
 import kotlin.math.round
 
 /**
@@ -273,17 +271,18 @@ object TradePlanValidationEngine {
             round(((worstCaseRewardTp3 ?: 0.0) / worstCaseRisk) * 100.0) / 100.0
         } else null
 
-        val midEntry = (safeMin + safeMax) / 2.0
-        val midRisk = abs(midEntry - safeSl)
-        val midReward = abs(safeTp1 - midEntry)
-        val midRr = if (midRisk > MIN_RISK_DISTANCE_EPSILON && midReward > 0.0) {
-            round((midReward / midRisk) * 100.0) / 100.0
+        // V9.1: every possible fill inside the advertised entry zone must meet the
+        // minimum R:R. The rounded number is for display; it must not relax the gate.
+        val rawWorstCaseRrTp1 = if (worstCaseRisk > MIN_RISK_DISTANCE_EPSILON && worstCaseRewardTp1 > 0.0) {
+            worstCaseRewardTp1 / worstCaseRisk
         } else {
             0.0
         }
 
-        if (midRr < minRequiredRr && recomputedRrTp1 < minRequiredRr) {
-            reasons.add("Recalculated R:R (midpoint 1:$midRr, worst-case 1:$recomputedRrTp1) is below required minimum of 1:$minRequiredRr for ${plan.strategy.displayName}")
+        if (!minRequiredRr.isFinite() || minRequiredRr <= 0.0) {
+            reasons.add("Minimum required R:R must be finite and positive")
+        } else if (!rawWorstCaseRrTp1.isFinite() || !recomputedRrTp1.isFinite() || rawWorstCaseRrTp1 < minRequiredRr) {
+            reasons.add("Recalculated worst-case R:R (1:$rawWorstCaseRrTp1) is below required minimum of 1:$minRequiredRr or non-finite for ${plan.strategy.displayName}")
         }
 
         if (reasons.isNotEmpty()) {

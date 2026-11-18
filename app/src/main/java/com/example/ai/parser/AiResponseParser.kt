@@ -71,7 +71,8 @@ data class AiAnalysisResult(
     val visionAssistedSummary: String = "",
     val strategyId: String = "AI_HYBRID",
     val strategyName: String = "AI Hybrid",
-    val tradePlan: StructuredTradePlan? = null
+    val tradePlan: StructuredTradePlan? = null,
+    val technicalEvidence: com.example.analysis.signal.TechnicalEvidenceResult? = null
 ) {
     val analysisModeBadge: String
         get() = if (visionAssisted) "👁️ Hybrid Vision + Technical" else "📊 Technical Only"

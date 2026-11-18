@@ -28,9 +28,9 @@ fun Modifier.premiumPanel(cornerRadius: Int = 14): Modifier = composed {
         .background(
             Brush.linearGradient(
                 listOf(
-                    Color(0xFF6ADDED).copy(alpha = 0.075f).compositeOver(background),
+                    Color(0xFF6ADDED).copy(alpha = 0.115f).compositeOver(background),
                     scheme.surfaceVariant.copy(alpha = 0.35f).compositeOver(background),
-                    Color(0xFFA78BFA).copy(alpha = 0.045f).compositeOver(background)
+                    Color(0xFFA78BFA).copy(alpha = 0.07f).compositeOver(background)
                 )
             )
         )

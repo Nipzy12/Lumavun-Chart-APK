@@ -219,10 +219,11 @@ class SignalValidationEngineTest {
         assertEquals(94000.0, outcome.validatedResult.entryZone.low, 0.001)
         assertEquals(94500.0, outcome.validatedResult.entryZone.high, 0.001)
         assertEquals(92500.0, outcome.validatedResult.stopLoss, 0.001)
-        // Midpoint: 94250, Risk: 1750, Reward: 3750 => R:R = 2.14
-        assertEquals(2.14, outcome.recomputedRiskReward, 0.01)
-        assertEquals(2.14, outcome.validatedResult.riskReward, 0.01)
-        assertEquals("A+", outcome.validatedResult.setupQuality)
+        // Worst BUY fill: 94500, Risk: 2000, Reward: 3500 => R:R = 1.75
+        assertEquals(1.75, outcome.recomputedRiskReward, 0.001)
+        assertEquals(1.75, outcome.validatedResult.riskReward, 0.001)
+        assertEquals(1.75, outcome.validatedResult.tradePlan!!.riskRewardTp1!!, 0.001)
+        assertEquals("A", outcome.validatedResult.setupQuality)
         assertTrue(outcome.rejectionReasons.isEmpty())
     }
 
@@ -250,9 +251,57 @@ class SignalValidationEngineTest {
         assertTrue("Valid SHORT must pass validation", outcome.isValid)
         assertEquals("SHORT", outcome.validatedResult.decision)
         assertEquals(96000.0, outcome.validatedResult.stopLoss, 0.001)
-        // Midpoint: 94250, Risk: 1750, Reward: 3250 => R:R = 1.86
-        assertEquals(1.86, outcome.recomputedRiskReward, 0.01)
-        assertEquals(1.86, outcome.validatedResult.riskReward, 0.01)
+        // Worst SELL fill: 94000, Risk: 2000, Reward: 3000 => R:R = 1.50
+        assertEquals(1.50, outcome.recomputedRiskReward, 0.001)
+        assertEquals(1.50, outcome.validatedResult.riskReward, 0.001)
+        assertEquals(1.50, outcome.validatedResult.tradePlan!!.riskRewardTp1!!, 0.001)
+        assertEquals("B", outcome.validatedResult.setupQuality)
+    }
+
+    @Test
+    fun `geometry rejects midpoint-only risk reward for both directions`() {
+        val buy = SignalValidationEngine.validateTradeGeometry(
+            "LONG", 100.0, 110.0, 90.0, listOf(130.0)
+        )
+        val sell = SignalValidationEngine.validateTradeGeometry(
+            "SHORT", 100.0, 110.0, 120.0, listOf(80.0)
+        )
+        assertFalse(buy.first)
+        assertFalse(sell.first)
+        assertTrue(buy.second.any { it.contains("worst-case R:R") })
+        assertTrue(sell.second.any { it.contains("worst-case R:R") })
+    }
+
+    @Test
+    fun `geometry rejects risk reward rounded above its actual threshold`() {
+        val result = SignalValidationEngine.validateTradeGeometry(
+            "LONG", 100.0, 100.0, 90.0, listOf(113.49)
+        )
+        assertFalse(result.first)
+    }
+
+    @Test
+    fun `directional result cannot carry a contradictory neutral or modified structured plan`() {
+        val snapshot = createSampleSnapshot(currentPrice = 94250.0)
+        val now = snapshot.latestCandle.openTime + 60_000L
+        val candidate = createCandidateResult()
+        val valid = SignalValidationEngine.validate(candidate, snapshot, currentTimeMs = now)
+        assertTrue(valid.isValid)
+        val plan = valid.validatedResult.tradePlan!!
+        val contradictory = listOf(
+            plan.copy(direction = com.example.ai.plan.TradeDirection.NEUTRAL,
+                orderType = com.example.ai.plan.TradeOrderType.NONE,
+                setupStatus = com.example.ai.plan.TradeSetupStatus.WAIT),
+            plan.copy(entryZoneMax = 94400.0)
+        )
+        for (other in contradictory) {
+            val outcome = SignalValidationEngine.validate(
+                candidate.copy(tradePlan = other), snapshot, currentTimeMs = now
+            )
+            assertFalse(outcome.isValid)
+            assertEquals("WAIT", outcome.validatedResult.decision)
+            assertTrue(outcome.rejectionReasons.any { it.contains("Structured trade plan conflicts") })
+        }
     }
 
     // 2. Reversed Stop Loss

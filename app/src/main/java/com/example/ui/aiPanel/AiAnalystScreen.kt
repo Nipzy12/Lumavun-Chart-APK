@@ -761,6 +761,8 @@ fun FullAiAnalystScreen(
                     )
                 }
 
+                V9EvidencePanel(aiResult?.technicalEvidence, snapshot)
+
                 if (aiResult != null) {
                     val liveSetup = activeSetup?.takeIf { !it.lifecycleState.isTerminal }
                     val (decBadge, decColor, decBg) = resolveDecisionVisuals(liveSetup?.direction ?: aiResult.decision)
@@ -1563,6 +1565,8 @@ fun FullAiAnalystScreen(
             }
 
             AiPanelSection.SIMULATION -> {
+                V9ReplayPanel(symbol, timeframe, snapshot,
+                    paperAccountState.config.feeRateBps + paperAccountState.config.slippageBps)
                 SimulationAndBacktestSection(
                     symbol = symbol,
                     timeframe = timeframe,
