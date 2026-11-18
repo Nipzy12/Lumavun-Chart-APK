@@ -10,7 +10,6 @@ import com.example.storage.preferences.TradingStyleProfile
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.max
-import kotlin.math.round
 
 /**
  * LUMAVUN AI Insight V2.1: Centralized, Deterministic Signal Validation Engine.
@@ -177,13 +176,18 @@ object SignalValidationEngine {
             }
         }
 
-        // 7. Mathematical Risk/Reward Recalculation
-        if (riskDistance > 0.0 && tp1 > 0.0) {
-            val rewardDistance = abs(tp1 - entryMid)
-            val recomputedRr = round((rewardDistance / riskDistance) * 100.0) / 100.0
-            if (recomputedRr < minRequiredRr) {
-                reasons.add("Recalculated R:R (1:$recomputedRr) is below required minimum of 1:$minRequiredRr")
-            }
+        // 7. Exact worst-case R:R gate, consistent with the structured plan.
+        // Midpoint remains useful for proximity, not for approving a range of fills.
+        val worstEntry = if (isLong) entryHigh else entryLow
+        val worstRisk = if (isLong) worstEntry - stopLoss else stopLoss - worstEntry
+        val worstReward = if (isLong) tp1 - worstEntry else worstEntry - tp1
+        val worstRr = if (worstRisk > MIN_RISK_DISTANCE_EPSILON && worstReward > 0.0) {
+            worstReward / worstRisk
+        } else 0.0
+        if (!minRequiredRr.isFinite() || minRequiredRr <= 0.0) {
+            reasons.add("Minimum required R:R must be finite and positive")
+        } else if (!worstRr.isFinite() || worstRr < minRequiredRr) {
+            reasons.add("Recalculated worst-case R:R (1:$worstRr) is below required minimum of 1:$minRequiredRr")
         }
 
         return Pair(reasons.isEmpty(), reasons)
@@ -312,6 +316,19 @@ object SignalValidationEngine {
         )
         if (!planOutcome.isValid) {
             rejectionReasons.addAll(planOutcome.rejectionReasons)
+        } else {
+            val normalized = planOutcome.sanitizedPlan
+            val expectedDirection = if (decision == "LONG") com.example.ai.plan.TradeDirection.BUY
+                else com.example.ai.plan.TradeDirection.SELL
+            if (normalized.isWaitOrInvalid || normalized.direction != expectedDirection ||
+                normalized.entryZoneMin != result.entryZone.low ||
+                normalized.entryZoneMax != result.entryZone.high ||
+                normalized.stopLoss != result.stopLoss ||
+                normalized.tp1 != result.takeProfit.firstOrNull() ||
+                normalized.tp2 != result.takeProfit.getOrNull(1) ||
+                normalized.tp3 != result.takeProfit.getOrNull(2)) {
+                rejectionReasons.add("Structured trade plan conflicts with directional signal or price levels")
+            }
         }
 
         // 3. No-Trade Safety Gates
@@ -430,14 +447,13 @@ object SignalValidationEngine {
         // 5. Valid Setup: Recalculate Risk/Reward & Setup Quality Deterministically
         val entryLow = minOf(result.entryZone.low, result.entryZone.high)
         val entryHigh = maxOf(result.entryZone.low, result.entryZone.high)
-        val entryMid = (entryLow + entryHigh) / 2.0
-        val riskDistance = abs(entryMid - result.stopLoss)
-        val tp1 = result.takeProfit.first()
-        val recomputedRr = round((abs(tp1 - entryMid) / riskDistance) * 100.0) / 100.0
+        val worstEntry = if (decision == "LONG") entryHigh else entryLow
+        val rawWorstRr = abs(result.takeProfit.first() - worstEntry) / abs(worstEntry - result.stopLoss)
+        val recomputedRr = planOutcome.sanitizedPlan.riskRewardTp1!!
 
         val maxAllowedGrade = when {
-            recomputedRr >= 2.0 && result.confidence >= 80 -> "A+"
-            recomputedRr >= 1.6 && result.confidence >= 72 -> "A"
+            rawWorstRr >= 2.0 && result.confidence >= 80 -> "A+"
+            rawWorstRr >= 1.6 && result.confidence >= 72 -> "A"
             else -> "B"
         }
 
