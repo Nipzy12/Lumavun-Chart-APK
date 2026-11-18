@@ -156,7 +156,7 @@ class ExampleUnitTest {
             marketStructure = "HH_HL",
             setupQuality = "HIGH",
             entryZone = EntryZone(67150.0, 67250.0),
-            stopLoss = 66800.0,
+            stopLoss = 66900.0, // Worst fill R:R = 550 / 350, above 1.35
             takeProfit = listOf(67800.0, 68300.0, 68900.0),
             riskReward = 1.8,
             confidence = 82,
@@ -177,6 +177,11 @@ class ExampleUnitTest {
         assertTrue(validated.entryZone.high < validated.takeProfit[0])
         assertTrue(validated.takeProfit[0] < validated.takeProfit[1])
         assertTrue(validated.takeProfit[1] < validated.takeProfit[2])
+
+        // The old fixture passes midpoint R:R but fails the new worst-fill minimum.
+        val midpointOnlyLong = validLongInput.copy(stopLoss = 66800.0)
+        val rejectedMidpoint = SignalEngine.validateAndNormalizeResult(midpointOnlyLong, currentPrice = 67200.0)
+        assertTrue("Worst-fill R:R of 550 / 450 must be rejected", rejectedMidpoint.isWait)
 
         // Test invalid LONG signal (SL above Entry) is rejected and converted to WAIT
         val invalidLong = validLongInput.copy(stopLoss = 67500.0)
