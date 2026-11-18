@@ -627,6 +627,22 @@ object PaperTradingEngine {
             )
         }
 
+        // V10 role veto never overrides existing gates. Legacy results with no evidence retain existing validation.
+        val supervisor = com.example.analysis.signal.V10Supervisor.review(aiResult.technicalEvidence)
+        if (supervisor.blocksSimulationEntry) {
+            val msg = "Supervisor veto: contradictory critical technical evidence"
+            return BotAutoEntryOutcome(state.copy(lastBotStatusMessage = msg), null, "SKIPPED_SUPERVISOR", msg)
+        }
+        val quote = if (hasVerifiedBidAsk) {
+            (if (aiResult.decision == "LONG") askPrice else bidPrice) ?: Double.NaN
+        } else liveMarketPrice
+        val actualRr = com.example.analysis.signal.V10Supervisor.fillRiskReward(
+            aiResult.decision, quote, aiResult.stopLoss, aiResult.takeProfit.firstOrNull() ?: Double.NaN, state.config.slippageBps)
+        if (actualRr == null || actualRr < SignalEngine.MIN_VALID_RISK_REWARD) {
+            val msg = "Virtual fill blocked: modeled execution R:R is below minimum or invalid"
+            return BotAutoEntryOutcome(state.copy(lastBotStatusMessage = msg), null, "SKIPPED_FILL_RISK", msg)
+        }
+
         // All checks passed -> Execute virtual entry!
         val prevOpenIds = state.openPositions.map { it.id }.toSet()
         val nextState = openPositionFromSignal(

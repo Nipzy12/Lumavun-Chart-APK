@@ -257,6 +257,7 @@ Return ONLY valid JSON matching this exact V3.1A schema:
         root.put("lowerTimeframe", snapshot.lowerContext?.timeframe?.binanceInterval ?: JSONObject.NULL)
         root.put("currentPrice", roundPriceCleanly(snapshot.currentPrice))
         root.put("marketRegime", snapshot.marketRegime.displayLabel)
+        root.put("adaptiveStrategyFocus", com.example.analysis.signal.SnapshotEvidenceAdapter.strategyFocus(snapshot.marketRegime))
         root.put("mtfConfirmationStatus", snapshot.mtfConfirmation.status.label)
         root.put("mtfConfirmationSummary", snapshot.mtfConfirmation.summary)
 
