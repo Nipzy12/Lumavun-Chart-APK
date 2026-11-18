@@ -123,6 +123,12 @@ function renderInsight(data) {
  byId('insightSummary').textContent=result.summary;
  const root=byId('insightDetails');root.replaceChildren();
  for(const part of result.details){const li=document.createElement('li');li.textContent=part;root.append(li);}
+ if(window.LumavunV9){
+  const r=window.LumavunV9.replay(data,state.interval,core);
+  const li=document.createElement('li');
+  li.textContent=r?'V9 EMA20/50 replay ('+r.bars+' closed bars, 6 bps/side): '+r.wins+' TP, '+r.losses+' SL, '+r.open+' open; net '+r.netR.toFixed(2)+'R, drawdown '+r.maxDrawdownR.toFixed(2)+'R. Fixed-rule simulation, not AI forecast.':'V9 replay unavailable: insufficient closed history.';
+  root.append(li);
+ }
 }
 function renderPaper(){
  byId('paperBalance').textContent=dollars(account.balance);
@@ -258,6 +264,7 @@ function renderAiResponse(result,key,provider,symbol,interval){
    'Skenario hipotetis: Entry '+fmt(result.entry)+' | SL '+fmt(result.stopLoss)+' | TP '+result.takeProfit.map(fmt).join(', ')+' | RR '+result.riskReward;
   const root=byId('aiReasoning');root.replaceChildren();
   for(const reason of result.reasoning){const li=document.createElement('li');li.textContent=reason;root.append(li);}
+  if(result.technicalEvidence){const e=result.technicalEvidence,li=document.createElement('li');li.textContent='V9 evidence '+e.score+'/100 · coverage '+e.coverage+'% (EMA/RSI and R:R only; MTF/SMC unavailable). Not a win probability.';root.append(li);}
   if(result.invalidation){const li=document.createElement('li');li.textContent='Invalidasi: '+result.invalidation;root.append(li);}
   byId('aiWarning').textContent=result.warning||'Periksa validitas feed dan risiko sebelum mengambil keputusan apa pun.';
 }
