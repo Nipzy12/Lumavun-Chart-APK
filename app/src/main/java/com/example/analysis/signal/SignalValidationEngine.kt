@@ -248,7 +248,8 @@ object SignalValidationEngine {
                 riskReward = 0.0,
                 entryOrderType = "WAIT",
                 setupDecisionState = "WAITING_FOR_CONFIRMATION",
-                tradePlan = sanitizedWaitPlan
+                tradePlan = sanitizedWaitPlan,
+                technicalEvidence = null
             )
             return ValidationOutcome(
                 isValid = true,
@@ -433,7 +434,8 @@ object SignalValidationEngine {
                 setupDecisionState = "WAITING_FOR_CONFIRMATION",
                 reasoning = combinedReasoning,
                 summary = failureSummary,
-                tradePlan = safeWaitPlan
+                tradePlan = safeWaitPlan,
+                technicalEvidence = null
             )
 
             return ValidationOutcome(
@@ -469,7 +471,11 @@ object SignalValidationEngine {
             takeProfit = result.takeProfit,
             riskReward = recomputedRr,
             setupQuality = finalizedGrade,
-            tradePlan = planOutcome.sanitizedPlan
+            tradePlan = planOutcome.sanitizedPlan,
+            technicalEvidence = snapshot?.let {
+                SnapshotEvidenceAdapter.evaluate(it, decision, rawWorstRr,
+                    maxOf(minRequiredRr, TradePlanValidationEngine.resolveMinimumRiskReward(activeStrategy, context.tradingStyleProfile)))
+            }
         )
 
         return ValidationOutcome(

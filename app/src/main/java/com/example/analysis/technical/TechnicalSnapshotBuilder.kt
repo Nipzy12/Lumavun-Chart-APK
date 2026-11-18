@@ -148,7 +148,8 @@ data class MarketTechnicalSnapshot(
     val lowerContext: TimeframeContextSummary? = null,
     val longCandidate: CandidateTradeLevels? = null,
     val shortCandidate: CandidateTradeLevels? = null,
-    val smcAnalysis: SmcAnalysisSnapshot? = null
+    val smcAnalysis: SmcAnalysisSnapshot? = null,
+    val replayCandles: List<Candle> = emptyList()
 )
 
 object TechnicalSnapshotBuilder {
@@ -682,7 +683,9 @@ object TechnicalSnapshotBuilder {
             timeframe = timeframe,
             currentPrice = price,
             latestCandle = latest,
-            recentCandles = candles.takeLast(15),
+            // Keep enough real history for the validator's 20-candle minimum.
+            recentCandles = candles.takeLast(60),
+            replayCandles = candles.filter { it.isClosed }.takeLast(1000),
             ema20 = ema20,
             ema50 = ema50,
             ema200 = ema200,

@@ -475,7 +475,7 @@ object PaperTradingEngine {
             return BotAutoEntryOutcome(state, null, "SKIPPED_WAIT", "Signal is WAIT — no bot entry.")
         }
 
-        if (state.botRunState != BotRunState.RUNNING && !state.config.autoExecuteConfirmedSignals) {
+        if (state.botRunState != BotRunState.RUNNING || !state.config.autoExecuteConfirmedSignals) {
             return BotAutoEntryOutcome(
                 state,
                 null,
