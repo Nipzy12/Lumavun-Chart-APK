@@ -306,6 +306,17 @@ fun ChartScreen(
             onExitFullscreen = onToggleFullscreen
         )
 
+        if (!isFullscreen && snapshot != null) {
+            Text(
+                text = "V10 · ${activeTicker?.provider?.displayLabel ?: settings.selectedMarketProvider.displayLabel} · ${snapshot.marketRegime.displayLabel} · ${snapshot.mtfConfirmation.status.label}",
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 2.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = CyanAccent,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
         // 2. Compact Timeframe Bar: 1m 5m 15m 30m 1H 4H 1D
         TimeframeSelectorRow(
             selectedTimeframe = activeTimeframe,
